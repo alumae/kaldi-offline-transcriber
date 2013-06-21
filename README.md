@@ -125,3 +125,6 @@ For example, to create a subtitle file, run
 Note that generating files in different formats doesn't add any runtime complexity, since all the different
 output files are generated from the same internal representation.
   
+To remove the intermediate files generated during decoding, run the pseudo-target `make .filename.clean`, e.g.:
+
+    make .intervjuu201306211256.clean
