@@ -35,7 +35,7 @@ THIS_DIR := $(shell dirname $(call where-am-i))
 
 FINAL_PASS=nnet5c1_pruned_rescored_main
 
-
+LD_LIBRARY_PATH=$(KALDI_ROOT)/tools/openfst/lib
 
 .SECONDARY:
 .DELETE_ON_ERROR:
