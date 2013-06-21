@@ -20,7 +20,7 @@ The system performs:
     This is the only part that is specific to Estonian.
 
 Trancription is performed in roughly 4.5x realtime on a 5 year old server, using one CPU.
-E.g., trancribing a radio inteview of length 8:23 takes about 37 minutes.
+E.g., transcribing a radio inteview of length 8:23 takes about 37 minutes.
 
 Memory requirements: during most of the work, less than 1 GB of memory is used.
 However, during the final rescoring pass, about 5 GB memory is used for a very short time.
@@ -44,6 +44,11 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
 
   * C compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
   * Perl
+
+### Audio processing tools ###
+
+  * ffmpeg
+  * sox
   
 ### Kaldi ###
 
@@ -97,4 +102,30 @@ put under the `build` subdirectory. So, if you feel that you messed something up
 want to do a fresh start, just delete the `build` directory and do a `make .init` again.
 
 
+## Usage ##
 
+Put a speech file under `src-audio`. Many file types (wav, mp3, ogg, mpg, m4a)
+are supported. E.g:
+
+    cd src-audio
+    wget http://media.kuku.ee/intervjuu/intervjuu201306211256.mp3
+    cd ..
+
+Run the transcription pipeline, and put the resulting text in `build/output/intervjuu201306211256.txt`:
+
+    make build/output/intervjuu201306211256.txt
+    
+The system can also generate a result in other formats: 
+
+  * `.trs` -- XML file in Transcriber (http://trans.sourceforge.net) format, with speakers information, sentence start and end times
+  * `.ctm` -- CTM file in NIST format -- contains timing information for each recognized word
+  * `.with-compounds.ctm` -- same as `.ctm`, but compound words are concanated using the '+' character
+  * `.sbv` -- subtitle file format, can be used for adding subtitles to YouTube videos
+  
+For example, to create a subtitle file, run
+
+   make build/output/intervjuu201306211256.txt
+   
+Note that generating files in different formats doesn't add any runtime complexity, since all the different
+output files are generated from the same internal representation.
+  

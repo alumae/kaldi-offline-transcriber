@@ -280,6 +280,10 @@ build/output/%.with-compounds.ctm: build/trans/%/$(FINAL_PASS).with-compounds.ct
 	mkdir -p `dirname $@`
 	cp $^ $@
 
+build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
+	mkdir -p `dirname $@`
+	cp $^ $@
+
 	
 	
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
