@@ -74,8 +74,8 @@ it like that (as root):
 
 Just clone the git reposititory, e.g. under `/home/speech/tools`:
 
-   cd /home/speech/tools
-   git clone git@github.com:alumae/kaldi-offline-transcriber.git
+    cd /home/speech/tools
+    git clone git@github.com:alumae/kaldi-offline-transcriber.git
    
 Download and unpack the Estonian acoustic and language models:
 
@@ -114,11 +114,11 @@ Run the transcription pipeline, and put the resulting text in `build/output/inte
 Result (if everything goes fine, after about 36 minutes): 
 
     # head -5 build/output/intervjuu201306211256.txt
-    Palgainfoagentuure koostöösse see onlain ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder tervist.
-    Kui laiapõhjaline suurim kooli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
-    Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmed.
-    Seda küll mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate töövõtjate uuringusse väga põgusalt sisse.
-    Need tulemused tulevad juuli käigus.
+    Palgainfoagentuure koostï¿½ï¿½sse see onlain ja teiste partneritega viis kevadel lï¿½bi tï¿½ï¿½andjate ja tï¿½ï¿½tajate palgauuringu meil on telefonil nï¿½ï¿½d palgainfoagentuuri juht Kadri Seeder tervist.
+    Kui laiapï¿½hjaline suurim kooli ma saan aru et ei ole kaasatud ainult Eesti tï¿½ï¿½andjad ja tï¿½ï¿½tajad.
+    Jah me seekord viisime uuringu lï¿½bi ka Lï¿½tis ja Leedus ja ja see on tï¿½pselt samasuguse metoodikaga nii et me saame vï¿½rrelda Lï¿½ti ja Leedu andmed.
+    Seda kï¿½ll mitte tï¿½na sellepï¿½rast et Lï¿½ti-Leedu tï¿½ï¿½andjatel ankeete lï¿½petavad tï¿½na vaatasime tï¿½ï¿½tajate tï¿½ï¿½vï¿½tjate uuringusse vï¿½ga pï¿½gusalt sisse.
+    Need tulemused tulevad juuli kï¿½igus.
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
