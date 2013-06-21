@@ -288,7 +288,7 @@ build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
 	
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
 .%.clean:
-	rm -rf build/audio/$* build/diarization/$* build/trans/$*
+	rm -rf build/audio/base/$* build/audio/segmented/$* build/diarization/$* build/trans/$*
 
 # Also deletes the output files	
 .%.cleanest: .%.clean
