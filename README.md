@@ -124,7 +124,7 @@ The system can also generate a result in other formats:
   
 For example, to create a subtitle file, run
 
-   make build/output/intervjuu201306211256.txt
+    make build/output/intervjuu201306211256.txt
    
 Note that generating files in different formats doesn't add any runtime complexity, since all the different
 output files are generated from the same internal representation.
