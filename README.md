@@ -55,19 +55,18 @@ However, one of our python script needs the OpenFST shared libraries. To enable
 shared libraries,  edit the file `tools/Makefile` before running `make` under `tools`
 and change the line:
 
-### Python 2.7 ###
+### Python  ###
 
-Install python 2.7, using your OS tools (e.g., `apt-get`). 
+Install python (at least 2.6), using your OS tools (e.g., `apt-get`). 
 Make sure `pip` is installed (`apt-get install python-pip`).
 
 ## Python package pyfst ##
 
 The python package `pyfst` is needed for reconstructing compound words. This package
 itself needs OpenFst shared libararies, that we already built when installing Kaldi.
-To install `pyfst` and make it use the Kaldi's Openfst libraries, install
+To install `pyfst` and make it use the Kaldi's OpenFst libraries, install
 it like that (as root):
 
-    
     CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install pyfst
     
 ### This package ###
@@ -77,18 +76,25 @@ Just clone the git reposititory under `/home/speech/tools`:
    cd /home/speech/tools
    git clone ...
    
-Set the paths in `Makefile.options` (TODO)
+Download and unpack the Estonian acoustic and language models:
+
+    cd /home/speech/tools/kaldi-offline-transcriber
+    curl http://www.phon.ioc.ee/~tanela/kaldi-offline-transcriber-data.tgz | tar xvf 
+
+Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
+
+    KALDI_ROOT=/home/speech/tools/kaldi-trunk
 
 Run this once:
 
     make .init
     
 This compiles all the necessary files from original model files that are used
-during decoding. 
+during decoding (takes some time).
 
 Note that all files that are created during initialization and decoding are
-put under the `build` subdirectory. So, if you feel that you want to do a fresh 
-start, just delete the `build` directory and do a `make .init` again.
+put under the `build` subdirectory. So, if you feel that you messed something up and
+want to do a fresh start, just delete the `build` directory and do a `make .init` again.
 
 
 

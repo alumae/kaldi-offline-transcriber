@@ -4,7 +4,7 @@ SHELL := /bin/bash
 -include Makefile.options
 
 # Where is Kaldi root directory?
-KALDI_ROOT?=/home/tanel/tools/kaldi-trunk
+KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 
 # How many processes to use for one transcription task
 njobs ?= 1
@@ -16,16 +16,16 @@ export cuda_cmd=run.pl
 export mkgraph_cmd=run.pl
 
 # Main language model (should be slightly pruned), used for rescoring
-LM ?=/home/tanel/devel/lm_ee/build/splitw/pruned.vestlused-dev.splitw2.arpa.gz
+LM ?=language_model/pruned.vestlused-dev.splitw2.arpa.gz
 
 # More aggressively pruned LM, used in decoding
-PRUNED_LM ?=/home/tanel/devel/lm_ee/build/splitw/pruned5.vestlused-dev.splitw2.arpa.gz
+PRUNED_LM ?=language_model/pruned5.vestlused-dev.splitw2.arpa.gz
 
-COMPOUNDER_LM ?=/home/tanel/devel/lm_ee/build/splitw/compounder-pruned.vestlused-dev.splitw.arpa.gz
+COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
 
 
 # Vocabulary in dict format (no pronouncation probs for now)
-VOCAB?=/home/tanel/devel/lm_ee/build/splitw/vestlused-dev.splitw2.dict
+VOCAB?=language_model/vestlused-dev.splitw2.dict
 
 LM_SCALE?=17
 
@@ -49,6 +49,7 @@ export
 	rm -f steps utils
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/steps
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/utils
+	mkdir -p src-audio
 
 .lang: build/fst/data/mainlm build/fst/data/prunedlm build/fst/data/compounderlm
 
@@ -263,11 +264,23 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 %.txt: %.hyp
 	cat $^  | perl -npe 'use locale; s/ \(\S+\)/\./; $$_= ucfirst();' > $@
 	
-build/output/%: build/trans/%/$(FINAL_PASS).ctm build/trans/%/$(FINAL_PASS).trs build/trans/%/$(FINAL_PASS).sbv build/trans/%/$(FINAL_PASS).with-fillers.ctm build/trans/%/$(FINAL_PASS).txt
-	mkdir -p $@
-	for f in $^; do \
-		cp $$f $@/$*.$${f##*.}; \
-	done
+build/output/%.trs: build/trans/%/$(FINAL_PASS).trs	
+	mkdir -p `dirname $@`
+	cp $^ $@
+
+build/output/%.ctm: build/trans/%/$(FINAL_PASS).ctm 
+	mkdir -p `dirname $@`
+	cp $^ $@
+
+build/output/%.txt: build/trans/%/$(FINAL_PASS).txt
+	mkdir -p `dirname $@`
+	cp $^ $@
+
+build/output/%.with-fillers.ctm: build/trans/%/$(FINAL_PASS).with-fillers.ctm
+	mkdir -p `dirname $@`
+	cp $^ $@
+
+	
 	
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
 .%.clean:
@@ -275,4 +288,4 @@ build/output/%: build/trans/%/$(FINAL_PASS).ctm build/trans/%/$(FINAL_PASS).trs 
 
 # Also deletes the output files	
 .%.cleanest: .%.clean
-	rm -rf build/output/$*
+	rm -rf build/output/$*.{trs,txt,ctm,with-fillers.ctm}
