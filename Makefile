@@ -238,18 +238,18 @@ build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pru
 build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat build/trans/$*/decode/score_$(LM_SCALE)/`dirname $*`.ctm  | perl -npe 's/(.*)-(S\d+)---(\S+)/\1_\3_\2/' > $@
 
-%.with-fillers.ctm: %.splitw2.ctm build/fst/data/compounderlm
+%.with-compounds.ctm: %.splitw2.ctm build/fst/data/compounderlm
 	scripts/compound-ctm.py \
 		"scripts/compounder.py build/fst/data/compounderlm/G.fst build/fst/data/compounderlm/words.txt" \
 		< $*.splitw2.ctm > $@
 
-%.segmented.ctm: %.segmented.with-fillers.ctm
+%.segmented.ctm: %.segmented.with-compounds.ctm
 	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' > $@
 
 %.ctm: %.segmented.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
-%.with-fillers.ctm: %.segmented.with-fillers.ctm
+%.with-compounds.ctm: %.segmented.with-compounds.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
 %.hyp: %.segmented.ctm
@@ -276,7 +276,7 @@ build/output/%.txt: build/trans/%/$(FINAL_PASS).txt
 	mkdir -p `dirname $@`
 	cp $^ $@
 
-build/output/%.with-fillers.ctm: build/trans/%/$(FINAL_PASS).with-fillers.ctm
+build/output/%.with-compounds.ctm: build/trans/%/$(FINAL_PASS).with-compounds.ctm
 	mkdir -p `dirname $@`
 	cp $^ $@
 
@@ -288,4 +288,4 @@ build/output/%.with-fillers.ctm: build/trans/%/$(FINAL_PASS).with-fillers.ctm
 
 # Also deletes the output files	
 .%.cleanest: .%.clean
-	rm -rf build/output/$*.{trs,txt,ctm,with-fillers.ctm}
+	rm -rf build/output/$*.{trs,txt,ctm,with-compounds.ctm}
