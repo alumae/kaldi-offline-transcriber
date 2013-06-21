@@ -40,7 +40,7 @@ cores by half, but should make processing faster, if you won't run more than
 It is recommended to create a decicated user account for the transcription work. 
 In the following we assume the user is `speech`, with a home directory `/home/speech`.
 
-### Compilation and development tools ###
+### Development tools ###
 
   * C compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
   * Perl
@@ -55,10 +55,6 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
 Install and compile e.g. under `/home/speech/tools/kaldi`. Follow instructions at
 http://kaldi.sourceforge.net/install.html. Install the `kaldi-trunk` version.
 
-NB! By default, Kaldi doesn't build the shared libraries of the OpenFST package.
-However, one of our python script needs the OpenFST shared libraries. To enable 
-shared libraries,  edit the file `tools/Makefile` before running `make` under `tools`
-and change the line:
 
 ### Python  ###
 
