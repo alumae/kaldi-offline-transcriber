@@ -2,3 +2,6 @@ build
 kaldi-data
 language_model
 src-audio
+steps
+utils
+Makefile.options
