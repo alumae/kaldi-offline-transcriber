@@ -33,16 +33,16 @@ Server running Linux is needed. The system is tested on Debian 'testing', but an
 modern distro should do.
 
 If you plan to process many recordings in parallel, we recoemmend to
-turn off hyperthreading in srver BIOS. This reduces the number of (virtual)
+turn off hyperthreading in server BIOS. This reduces the number of (virtual)
 cores by half, but should make processing faster, if you won't run more than
 `N` processes in parallel, where `N` is the number of physical cores.
 
-It is recommended to create a decicated user account for the transcription work. 
+It is recommended (but not needed) to create a decicated user account for the transcription work. 
 In the following we assume the user is `speech`, with a home directory `/home/speech`.
 
 ### Development tools ###
 
-  * C compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
+  * C/C++ compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
   * Perl
 
 ### Audio processing tools ###
@@ -72,10 +72,10 @@ it like that (as root):
     
 ### This package ###
 
-Just clone the git reposititory under `/home/speech/tools`:
+Just clone the git reposititory, e.g. under `/home/speech/tools`:
 
    cd /home/speech/tools
-   git clone ...
+   git clone git@github.com:alumae/kaldi-offline-transcriber.git
    
 Download and unpack the Estonian acoustic and language models:
 
@@ -110,6 +110,18 @@ are supported. E.g:
 Run the transcription pipeline, and put the resulting text in `build/output/intervjuu201306211256.txt`:
 
     make build/output/intervjuu201306211256.txt
+    
+Result (if everything goes fine, after about 36 minutes): 
+
+  # head -5 build/output/intervjuu201306211256.txt
+  Palgainfoagentuure koostöösse see onlain ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder tervist.
+  Kui laiapõhjaline suurim kooli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+  Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmed.
+  Seda küll mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate töövõtjate uuringusse väga põgusalt sisse.
+  Need tulemused tulevad juuli käigus.
+
+
+Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
     
 The system can also generate a result in other formats: 
 
