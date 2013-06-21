@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 
-include Makefile.options
+# Use this file to override various settings
+-include Makefile.options
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/tanel/tools/kaldi-trunk
@@ -18,9 +19,9 @@ export mkgraph_cmd=run.pl
 LM ?=/home/tanel/devel/lm_ee/build/splitw/pruned.vestlused-dev.splitw2.arpa.gz
 
 # More aggressively pruned LM, used in decoding
-PRUNED_LM=/home/tanel/devel/lm_ee/build/splitw/pruned5.vestlused-dev.splitw2.arpa.gz
+PRUNED_LM ?=/home/tanel/devel/lm_ee/build/splitw/pruned5.vestlused-dev.splitw2.arpa.gz
 
-COMPOUNDER_LM=/home/tanel/devel/lm_ee/build/splitw/compounder-pruned.vestlused-dev.splitw.arpa.gz
+COMPOUNDER_LM ?=/home/tanel/devel/lm_ee/build/splitw/compounder-pruned.vestlused-dev.splitw.arpa.gz
 
 
 # Vocabulary in dict format (no pronouncation probs for now)
@@ -33,6 +34,8 @@ where-am-i = $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(shell dirname $(call where-am-i))
 
 FINAL_PASS=nnet5c1_pruned_rescored_main
+
+
 
 .SECONDARY:
 .DELETE_ON_ERROR:
@@ -47,22 +50,9 @@ export
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/steps
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/utils
 
-.lang: build/fst/data/dict build/fst/data/mainlm build/fst/data/prunedlm
-	rm -rf $@
-	mkdir -p $@
-	cp -r build/fst/data/mainlm/* $@
-	rm $@/G.fst
-	gunzip -c $(PRUNED_LM) | \
-		grep -v '<s> <s>' | \
-		grep -v '</s> <s>' | \
-		grep -v '</s> </s>' | \
-		arpa2fst - | fstprint | \
-		utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$@/words.txt \
-			--osymbols=$@/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-		 fstrmepsilon > $@/G.fst
-	fstisstochastic $@/G.fst || echo "Warning: LM not stochastic"
+.lang: build/fst/data/mainlm build/fst/data/prunedlm build/fst/data/compounderlm
 
-.composed_lms: build/fst/tri3b_mmi/graph_prunedlm
+.composed_lms: build/fst/tri3b/graph_prunedlm 
 
 # Convert dict and LM to FST format
 build/fst/data/dict build/fst/data/mainlm: $(LM) $(VOCAB)
@@ -99,6 +89,19 @@ build/fst/data/prunedlm: build/fst/data/mainlm $(PRUNED_LM)
 		 fstrmepsilon > $@/G.fst
 	fstisstochastic $@/G.fst || echo "Warning: LM not stochastic"
 
+
+build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
+	rm -rf $@
+	mkdir -p $@
+	cat $(VOCAB) | perl -npe 's/(\(\d\))?\s.+//' | uniq | python scripts/make-compounder-symbols.py > $@/words.txt
+	zcat $(COMPOUNDER_LM) | \
+		grep -v '<s> <s>' | \
+		grep -v '</s> <s>' | \
+		grep -v '</s> </s>' | \
+		arpa2fst  - | fstprint | \
+		utils/s2eps.pl | fstcompile --isymbols=$@/words.txt --osymbols=$@/words.txt > $@/G.fst 
+		
+
 build/fst/%/final.mdl:
 	cp -r $(THIS_DIR)/kaldi-data/$* `dirname $@`
 	
@@ -109,7 +112,6 @@ build/fst/%/graph_mainlm: build/fst/data/mainlm build/fst/%/final.mdl
 build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 	rm -rf $@
 	utils/mkgraph.sh build/fst/data/prunedlm build/fst/$* $@
-
 
 build/audio/base/%.wav: src-audio/%.wav
 	mkdir -p `dirname $@`
@@ -129,7 +131,7 @@ build/audio/base/%.wav: src-audio/%.mp2
 
 build/audio/base/%.wav: src-audio/%.m4a
 	mkdir -p `dirname $@`
-	avconv -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
 	
 build/audio/base/%.wav: src-audio/%.mp4
 	mkdir -p `dirname $@`
@@ -147,7 +149,7 @@ build/audio/base/%.wav: src-audio/%.amr
 
 build/audio/base/%.wav: src-audio/%.mpg
 	mkdir -p `dirname $@`
-	avconv -i $^ -f sox - | sox -t sox - -c 1 -2 build/audio/base/$*.wav rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 build/audio/base/$*.wav rate -v 16k
 	
 # Speaker diarization
 build/diarization/%/show.seg: build/audio/base/%.wav
@@ -201,23 +203,24 @@ build/trans/%/mfcc: build/trans/%/spk2utt
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1;
 	
 # First, decode using tri3b_mmi (LDA+MLLT+SAT+MMI trained triphones)
-build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b_mmi/graph_prunedlm build/fst/tri3b_mmi/final.mdl build/trans/%/mfcc
+build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b/graph_prunedlm build/fst/tri3b/final.mdl build/fst/tri3b_mmi/final.mdl build/trans/%/mfcc
 	rm -rf build/trans/$*/tri3b_mmi_pruned
 	mkdir -p build/trans/$*/tri3b_mmi_pruned
 	(cd build/trans/$*/tri3b_mmi_pruned; for f in ../../../fst/tri3b_mmi/*; do ln -s $$f; done)
 	steps/decode_fmllr.sh --config conf/decode.conf --skip-scoring true --nj $(njobs) --cmd "$$decode_cmd" \
-		build/fst/tri3b_mmi/graph_prunedlm build/trans/$* `dirname $@`
-	(cd build/trans/$*/tri3b_mmi_pruned; ln -s ../../../fst/tri3b_mmi/graph_prunedlm graph)
+	  --alignment-model build/fst/tri3b/final.alimdl --adapt-model build/fst/tri3b/final.mdl \
+		build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
+	(cd build/trans/$*/tri3b_mmi_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
-# Now, decode using NNet AM, using speaker transforms from tri3b_mmi
+# Now, decode using nnet AM, using speaker transforms from tri3b_mmi
 build/trans/%/nnet5c1_pruned/decode/log: build/trans/%/tri3b_mmi_pruned/decode/log build/fst/nnet5c1/final.mdl
 	rm -rf build/trans/$*/nnet5c1_pruned
 	mkdir -p build/trans/$*/nnet5c1_pruned
 	(cd build/trans/$*/nnet5c1_pruned; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
 	steps/decode_nnet_cpu.sh --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
     --transform-dir build/trans/$*/tri3b_mmi_pruned/decode \
-     build/fst/tri3b_mmi/graph_prunedlm build/trans/$* `dirname $@`
-	(cd build/trans/$*/nnet5c1_pruned; ln -s ../../../fst/tri3b_mmi/graph_prunedlm graph)
+     build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
+	(cd build/trans/$*/nnet5c1_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
 build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pruned/decode/log build/fst/data/mainlm
 	rm -rf build/trans/$*/nnet5c1_pruned_rescored_main
@@ -225,7 +228,7 @@ build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pru
 	(cd build/trans/$*/nnet5c1_pruned_rescored_main; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
 	steps/lmrescore.sh --cmd "$$decode_cmd" --mode 1 build/fst/data/prunedlm build/fst/data/mainlm \
 		build/trans/$* build/trans/$*/nnet5c1_pruned/decode build/trans/$*/nnet5c1_pruned_rescored_main/decode || exit 1;
-	(cd build/trans/$*/nnet5c1_pruned_rescored_main; ln -s ../../../fst/tri3b_mmi/graph_prunedlm graph)
+	(cd build/trans/$*/nnet5c1_pruned_rescored_main; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
 %/decode/.ctm: %/decode/log
 	steps/get_ctm.sh  `dirname $*` $*/graph $*/decode
@@ -234,15 +237,18 @@ build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pru
 build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat build/trans/$*/decode/score_$(LM_SCALE)/`dirname $*`.ctm  | perl -npe 's/(.*)-(S\d+)---(\S+)/\1_\3_\2/' > $@
 
-%.with-fillers.ctm: %.splitw2.ctm
+%.with-fillers.ctm: %.splitw2.ctm build/fst/data/compounderlm
 	scripts/compound-ctm.py \
-		"hidden-ngram -lm $(COMPOUNDER_LM) -hidden-vocab $(THIS_DIR)/conf/compounder.hidden-vocab -text - -keep-unk" \
-		< $< > $@
+		"scripts/compounder.py build/fst/data/compounderlm/G.fst build/fst/data/compounderlm/words.txt" \
+		< $*.splitw2.ctm > $@
 
 %.segmented.ctm: %.segmented.with-fillers.ctm
 	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' > $@
 
 %.ctm: %.segmented.ctm
+	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
+
+%.with-fillers.ctm: %.segmented.with-fillers.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
 %.hyp: %.segmented.ctm
@@ -253,7 +259,6 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 
 %.sbv: %.hyp
 	cat $^ | python scripts/hyp2sbv.py > $@
-
 	
 %.txt: %.hyp
 	cat $^  | perl -npe 'use locale; s/ \(\S+\)/\./; $$_= ucfirst();' > $@
@@ -261,6 +266,13 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 build/output/%: build/trans/%/$(FINAL_PASS).ctm build/trans/%/$(FINAL_PASS).trs build/trans/%/$(FINAL_PASS).sbv build/trans/%/$(FINAL_PASS).with-fillers.ctm build/trans/%/$(FINAL_PASS).txt
 	mkdir -p $@
 	for f in $^; do \
-		cp $$f $@/final.$${f##*.}; \
+		cp $$f $@/$*.$${f##*.}; \
 	done
 	
+# Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
+.%.clean:
+	rm -rf build/audio/$* rm -rf build/diarization/$* rm -rf build/trans/$*
+
+# Also deletes the output files	
+.%.cleanest: .%.clean
+	rm -rf build/output/$*

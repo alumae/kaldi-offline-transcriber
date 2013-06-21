@@ -1,5 +1,13 @@
+#!/usr/bin/python -u
+
 import sys
 import fst
+''' 
+Script that adds symbols for compound word reconstruction (+C+, +D+, the 
+latter is word dash-seperated words) between tokens, using a "hidden event LM",
+i.e. a LM that includes also +C+ and +D+.
+'''
+
 
 def make_sentence_fsa(words, word_ids):
   t = fst.StdVectorFst()
@@ -30,43 +38,49 @@ def make_compounder(words, word_ids):
   return c
 
 
+if __name__ == '__main__':
+  if len(sys.argv) != 3:
+    print >> sys.stderr, "Usage: %s G.fst words.txt" % sys.argv[0]
+    
+  g = fst.read(sys.argv[1])
 
-g = fst.read("G.fst")
-
-syms = {}
-syms_list = []
-for l in open("words-compounder.txt"):
-  ss = l.split()
-  syms[ss[0]] = int(ss[1])
-  syms_list.append(ss[0])
-  
-unk_id = syms["<unk>"]  
-for l in sys.stdin:
-  unks = []
-  words = l.split()
-  word_ids = []
-  for word in words:
-    word_id = syms.get(word, unk_id)
-    word_ids.append(word_id)
-    if word_id == unk_id:
-      unks.append(word)
+  syms = {}
+  syms_list = []
+  for l in open(sys.argv[2]):
+    ss = l.split()
+    syms[ss[0]] = int(ss[1])
+    syms_list.append(ss[0])
+    
+  unk_id = syms["<unk>"]  
+  # Following is needed to avoid line buffering
+  while 1:
+    l = sys.stdin.readline()
+    if not l: break
+    unks = []
+    words = l.split()
+    word_ids = []
+    for word in words:
+      word_id = syms.get(word, unk_id)
+      word_ids.append(word_id)
+      if word_id == unk_id:
+        unks.append(word)
     
   
-  sentence = make_sentence_fsa(words, word_ids)
-  compound = make_compounder(words, word_ids)
-  composed = sentence >> compound
-  composed2 = composed >> g
-  #composed.arc_sort_output()
-  
-  alignment = composed2.shortest_path()
-  alignment.remove_epsilon()
-  alignment.top_sort()
-  arcs = (next(state.arcs) for state in alignment)
-  labels = []
-  for arc in arcs:
-    if arc.olabel > 0:
-      if arc.olabel == unk_id:
-        labels.append(unks.pop(0))
-      else:
-        labels.append(syms_list[arc.olabel])
-  print " ".join(labels)
+    sentence = make_sentence_fsa(words, word_ids)
+    compound = make_compounder(words, word_ids)
+    composed = sentence >> compound
+    composed2 = composed >> g
+    
+    alignment = composed2.shortest_path()
+    alignment.remove_epsilon()
+    alignment.top_sort()
+    arcs = (next(state.arcs) for state in alignment)
+    labels = []
+    for arc in arcs:
+      if arc.olabel > 0:
+        if arc.olabel == unk_id:
+          labels.append(unks.pop(0))
+        else:
+          labels.append(syms_list[arc.olabel])
+    print " ".join(labels)
+    sys.stdout.flush()
