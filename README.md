@@ -115,12 +115,12 @@ The system can also generate a result in other formats:
 
   * `.trs` -- XML file in Transcriber (http://trans.sourceforge.net) format, with speakers information, sentence start and end times
   * `.ctm` -- CTM file in NIST format -- contains timing information for each recognized word
-  * `.with-compounds.ctm` -- same as `.ctm`, but compound words are concanated using the '+' character
+  * `.with-compounds.ctm` -- same as `.ctm`, but compound words are concatenated using the '+' character
   * `.sbv` -- subtitle file format, can be used for adding subtitles to YouTube videos
   
 For example, to create a subtitle file, run
 
-    make build/output/intervjuu201306211256.txt
+    make build/output/intervjuu201306211256.sbv
    
 Note that generating files in different formats doesn't add any runtime complexity, since all the different
 output files are generated from the same internal representation.
