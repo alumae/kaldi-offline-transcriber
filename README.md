@@ -114,7 +114,7 @@ For example:
 
     make build/output/intervjuu201306211256.txt
     
-Result (if everything goes fine, after about 36 minutes): 
+Result (if everything goes fine, after about 36 minutes later (audio file was 8:35 in length, resulting in realtime factor of 4.2)): 
 
     # head -5 build/output/intervjuu201306211256.txt
     Palgainfoagentuure koostöösse see onlain ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder tervist.
@@ -158,3 +158,22 @@ E.g., being in some data directory, you can execute:
 This transcribes the file `audio/test.ogg` and puts the result in Transcriber XML format to `result/test.trs`.
 The script automatically deletes the intermediate files generated during decoding, unless the option `--clean false` is
 used.
+
+## Speeding up decoding ##
+
+The most time-consuming parts of the system can be executed in parallel. This speeds up decoding
+with the expense of using more CPU cores.
+
+To enable multi-threaded execution, set the variable `nthreads` in `Makefile.options`, e.g.:
+
+    nthreads = 4
+
+The speedup is not quite linear. For example, decoding an audio file of 8:35 minutes takes
+   
+    * 36 minutes with 1 thread (4.2x realtime)
+    * 16.5 minutes with 4 threads (1.9x realtime)
+    
+The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
+server has many cores but relatively little memory (say 16 cores and 16 GB), you can set `nthreads = 5`,
+and use up to 3 parallel decoding processes.
+
