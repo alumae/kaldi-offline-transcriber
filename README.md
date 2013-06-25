@@ -170,8 +170,8 @@ To enable multi-threaded execution, set the variable `nthreads` in `Makefile.opt
 
 The speedup is not quite linear. For example, decoding an audio file of 8:35 minutes takes
    
-    * 36 minutes with 1 thread (4.2x realtime)
-    * 16.5 minutes with 4 threads (1.9x realtime)
+  * 36 minutes with 1 thread (4.2x realtime)
+  * 16.5 minutes with 4 threads (1.9x realtime)
     
 The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
 server has many cores but relatively little memory (say 16 cores and 16 GB), you can set `nthreads = 5`,
