@@ -189,6 +189,9 @@ The speedup is not quite linear. For example, decoding an audio file of 8:35 min
   * 16.5 minutes with 4 threads (1.9x realtime)
     
 The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
-server has many cores but relatively little memory (say 16 cores and 16 GB), you can set `nthreads = 5`,
+server has many cores but relatively little memory (say 16 cores and 16 GB RAM), you can set `nthreads = 5`,
 and use up to 3 parallel decoding processes (e.g., using a queue system, such as Sun Grid Engine).
+This way, the total memory consumption should never exceed 16 GB, and the decoding happens in ~1.5x realtime.
+
+
 
