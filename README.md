@@ -175,5 +175,5 @@ The speedup is not quite linear. For example, decoding an audio file of 8:35 min
     
 The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
 server has many cores but relatively little memory (say 16 cores and 16 GB), you can set `nthreads = 5`,
-and use up to 3 parallel decoding processes.
+and use up to 3 parallel decoding processes (e.g., using a queue system, such as Sun Grid Engine).
 
