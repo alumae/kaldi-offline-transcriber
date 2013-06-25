@@ -144,3 +144,17 @@ output files are generated from the same internal representation.
 To remove the intermediate files generated during decoding, run the pseudo-target `make .filename.clean`, e.g.:
 
     make .intervjuu201306211256.clean
+
+
+## Alternative usage ##
+
+Alternatively, one can use the wrapper script `speech2text.sh` to transcribe audio files. The scripts is a wrapper to the Makefile-based
+system. The scripts can be called from any directory.
+
+E.g., being in some data directory, you can execute:
+
+    /home/speech/kaldi-offline-transcriber/speech2text.sh --trs result/test.trs audio/test.ogg
+    
+This transcribes the file `audio/test.ogg` and puts the result in Transcriber XML format to `result/test.trs`.
+The script automatically deletes the intermediate files generated during decoding, unless the option `--clean false` is
+used.
