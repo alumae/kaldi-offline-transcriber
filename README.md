@@ -52,8 +52,23 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
   
 ### Kaldi ###
 
-Install and compile e.g. under `/home/speech/tools/kaldi`. Follow instructions at
+Install and compile e.g. under `/home/speech/tools`. Follow instructions at
 http://kaldi.sourceforge.net/install.html. Install the `kaldi-trunk` version.
+
+You should probably execute something along the following lines (but refer to the official
+install guide for details):
+
+    cd ~/tools
+    svn co svn://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
+    cd kaldi-trunk
+    cd tools
+    make -j 4
+    ./install_atlas.sh
+
+    cd ../src
+    ./configure
+    make depend
+    make -j 4
 
 
 ### Python  ###
