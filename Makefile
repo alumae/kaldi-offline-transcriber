@@ -292,4 +292,4 @@ build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
 
 # Also deletes the output files	
 .%.cleanest: .%.clean
-	rm -rf build/output/$*.{trs,txt,ctm,with-compounds.ctm}
+	rm -rf build/output/$*.{trs,txt,ctm,with-compounds.ctm,sbv}

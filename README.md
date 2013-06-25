@@ -107,18 +107,22 @@ are supported. E.g:
     wget http://media.kuku.ee/intervjuu/intervjuu201306211256.mp3
     cd ..
 
-Run the transcription pipeline, and put the resulting text in `build/output/intervjuu201306211256.txt`:
+Tp run the transcription pipeline, execute `make build/output/<filename>.txt` where `filename` matches the name of  the audio file
+in `src-audio` (without the extension). This command runs all the necessary commands to generate the transcription file.
+
+For example:
 
     make build/output/intervjuu201306211256.txt
     
 Result (if everything goes fine, after about 36 minutes): 
 
     # head -5 build/output/intervjuu201306211256.txt
-    Palgainfoagentuure koost��sse see onlain ja teiste partneritega viis kevadel l�bi t��andjate ja t��tajate palgauuringu meil on telefonil n��d palgainfoagentuuri juht Kadri Seeder tervist.
-    Kui laiap�hjaline suurim kooli ma saan aru et ei ole kaasatud ainult Eesti t��andjad ja t��tajad.
-    Jah me seekord viisime uuringu l�bi ka L�tis ja Leedus ja ja see on t�pselt samasuguse metoodikaga nii et me saame v�rrelda L�ti ja Leedu andmed.
-    Seda k�ll mitte t�na sellep�rast et L�ti-Leedu t��andjatel ankeete l�petavad t�na vaatasime t��tajate t��v�tjate uuringusse v�ga p�gusalt sisse.
-    Need tulemused tulevad juuli k�igus.
+    Palgainfoagentuure koostöösse see onlain ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder tervist.
+    Kui laiapõhjaline suurim kooli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+    Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmed.
+    Seda küll mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate töövõtjate uuringusse väga põgusalt sisse.
+    Need tulemused tulevad juuli käigus.
+
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
