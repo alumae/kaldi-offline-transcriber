@@ -9,6 +9,9 @@ KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 # How many processes to use for one transcription task
 njobs ?= 1
 
+# How many threads to use in each process
+nthreads ?= 1
+
 PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnetbin:$(KALDI_ROOT)/src/nnet-cpubin/:$(KALDI_ROOT)/src/kwsbin:$(PATH)
 export train_cmd=run.pl
 export decode_cmd=run.pl
@@ -208,7 +211,7 @@ build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b/graph_prunedlm build/
 	rm -rf build/trans/$*/tri3b_mmi_pruned
 	mkdir -p build/trans/$*/tri3b_mmi_pruned
 	(cd build/trans/$*/tri3b_mmi_pruned; for f in ../../../fst/tri3b_mmi/*; do ln -s $$f; done)
-	steps/decode_fmllr.sh --config conf/decode.conf --skip-scoring true --nj $(njobs) --cmd "$$decode_cmd" \
+	steps/decode_fmllr.sh --num-threads $(nthreads) --config conf/decode.conf --skip-scoring true --nj $(njobs) --cmd "$$decode_cmd" \
 	  --alignment-model build/fst/tri3b/final.alimdl --adapt-model build/fst/tri3b/final.mdl \
 		build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
 	(cd build/trans/$*/tri3b_mmi_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
@@ -218,7 +221,7 @@ build/trans/%/nnet5c1_pruned/decode/log: build/trans/%/tri3b_mmi_pruned/decode/l
 	rm -rf build/trans/$*/nnet5c1_pruned
 	mkdir -p build/trans/$*/nnet5c1_pruned
 	(cd build/trans/$*/nnet5c1_pruned; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	steps/decode_nnet_cpu.sh --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+	steps/decode_nnet_cpu.sh --num-threads $(nthreads) --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
     --transform-dir build/trans/$*/tri3b_mmi_pruned/decode \
      build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
 	(cd build/trans/$*/nnet5c1_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
