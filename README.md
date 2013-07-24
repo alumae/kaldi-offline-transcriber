@@ -52,6 +52,9 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
   
 ### Kaldi ###
 
+IMPORTANT: Last tested against Kaldi trunk as of 2013-07-24 11:00. The system
+may not work with earlier or later version of Kaldi.
+
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
 http://kaldi.sourceforge.net/install.html. Install the `kaldi-trunk` version.
 
