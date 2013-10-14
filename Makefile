@@ -230,7 +230,7 @@ build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pru
 	rm -rf build/trans/$*/nnet5c1_pruned_rescored_main
 	mkdir -p build/trans/$*/nnet5c1_pruned_rescored_main
 	(cd build/trans/$*/nnet5c1_pruned_rescored_main; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	steps/lmrescore.sh --cmd "$$decode_cmd" --mode 1 build/fst/data/prunedlm build/fst/data/mainlm \
+	local/lmrescore_lowmem.sh --cmd "$$decode_cmd" --mode 1 build/fst/data/prunedlm build/fst/data/mainlm \
 		build/trans/$* build/trans/$*/nnet5c1_pruned/decode build/trans/$*/nnet5c1_pruned_rescored_main/decode || exit 1;
 	(cd build/trans/$*/nnet5c1_pruned_rescored_main; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
