@@ -9,12 +9,14 @@ trs=""
 ctm=""
 sbv=""
 clean=true
+nthreads=""
 
 . $BASEDIR/utils/parse_options.sh || exit 1;
 
 if [ $# -ne 1 ]; then
   echo "Usage: speech2text [options] <audiofile>"
   echo "Options:"
+  echo "  --nthreads <n>        # Use <n> threads in parallel for decoding"
   echo "  --txt <txt-file>      # Put the result in a simple text file"
   echo "  --trs <trs-file>      # Put the result in trs file (XML file for Transcriber)"
   echo "  --ctm <ctm-file>      # Put the result in CTM file (one line pwer word with timing information)"
@@ -23,10 +25,15 @@ if [ $# -ne 1 ]; then
   exit 1;
 fi
 
+nthreads_arg=""
+if [ ! -z $nthreads ]; then
+  echo "Using $nthreads threads for decoding"
+  nthreads_arg="nthreads=$nthreads"
+fi
   
 cp -u $1 $BASEDIR/src-audio
 
-(cd $BASEDIR; make build/output/${1%.*}.{txt,trs,ctm,sbv}; if $clean ; then make .${1%.*}.clean; fi)
+(cd $BASEDIR; make $nthreads_arg build/output/${1%.*}.{txt,trs,ctm,sbv}; if $clean ; then make .${1%.*}.clean; fi)
 
 if [ ! -z $txt ]; then
   cp $BASEDIR/build/output/${1%.*}.txt $txt
