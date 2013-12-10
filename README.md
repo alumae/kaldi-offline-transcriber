@@ -93,7 +93,7 @@ it like that (as root):
 Just clone the git reposititory, e.g. under `/home/speech/tools`:
 
     cd /home/speech/tools
-    git clone git@github.com:alumae/kaldi-offline-transcriber.git
+    git clone https://github.com/alumae/kaldi-offline-transcriber.git
    
 Download and unpack the Estonian acoustic and language models:
 
