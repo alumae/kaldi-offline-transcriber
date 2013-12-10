@@ -32,6 +32,8 @@ However, during the final rescoring pass, about 5 GB memory is used for a very s
 Server running Linux is needed. The system is tested on Debian 'testing', but any 
 modern distro should do.
 
+Around 8 GB of RAM is required to initialize the speech recognition models for Estonian.
+
 If you plan to process many recordings in parallel, we recoemmend to
 turn off hyperthreading in server BIOS. This reduces the number of (virtual)
 cores by half, but should make processing faster, if you won't run more than
@@ -98,7 +100,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://www.phon.ioc.ee/~tanela/kaldi-offline-transcriber-data.tgz | tar xvf 
+    curl http://www.phon.ioc.ee/~tanela/kaldi-offline-transcriber-data.tgz | tar xv 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
