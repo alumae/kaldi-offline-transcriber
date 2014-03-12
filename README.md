@@ -100,7 +100,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://www.phon.ioc.ee/~tanela/kaldi-offline-transcriber-data.tgz | tar xv 
+    curl http://www.phon.ioc.ee/~tanela/kaldi-offline-transcriber-data.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
