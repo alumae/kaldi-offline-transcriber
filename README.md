@@ -57,7 +57,7 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
 IMPORTANT: Last tested against Kaldi trunk as of 2013-07-24 11:00. The system
 may not work with earlier or later version of Kaldi.
 
-UPDATE: I can conform that the current version does not work with the lates Kaldi trunk. I hope to fix it soon.
+UPDATE: I can confrm that the current version does not work with the latest Kaldi trunk. I hope to fix it soon.
 Meanwhile, please use Kaldi SVN revision 2720. Sorry for the inconvenience.
 
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
