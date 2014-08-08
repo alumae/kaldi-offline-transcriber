@@ -51,14 +51,14 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
 
   * ffmpeg
   * sox
+
+## Installation ##
   
 ### Kaldi ###
 
-IMPORTANT: Last tested against Kaldi trunk as of 2013-07-24 11:00. The system
-may not work with earlier or later version of Kaldi.
+IMPORTANT: The system works agains Kaldi trunk as of 2014-08-07. The system
+may not work with Kaldi revisions that are a lot (months) older or newer than that.
 
-UPDATE: I can confrm that the current version does not work with the latest Kaldi trunk. I hope to fix it soon.
-Meanwhile, please use Kaldi SVN revision 2720. Sorry for the inconvenience.
 
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
 http://kaldi.sourceforge.net/install.html. Install the `kaldi-trunk` version.
@@ -84,7 +84,7 @@ install guide for details):
 Install python (at least 2.6), using your OS tools (e.g., `apt-get`). 
 Make sure `pip` is installed (`apt-get install python-pip`).
 
-## Python package pyfst ##
+### Python package pyfst ###
 
 The python package `pyfst` is needed for reconstructing compound words. This package
 itself needs OpenFst shared libararies, that we already built when installing Kaldi.
@@ -103,7 +103,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl https://phon.ioc.ee/~tanela/kaldi-offline-transcriber-data.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-08-08.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -120,6 +120,35 @@ Note that all files that are created during initialization and decoding are
 put under the `build` subdirectory. So, if you feel that you messed something up and
 want to do a fresh start, just delete the `build` directory and do a `make .init` again.
 
+
+## How to upgrade from a previous version ##
+
+Update Kaldi:
+
+    cd /home/speech/tools/kaldi-trunk
+    svn update
+    cd src
+    make clean
+    make -j 4 depend
+    make -j 4 
+
+Update this system:
+
+    cd /home/speech/tools/kaldi-offline-transcriber
+    git pull
+    
+Remove old `build`, `kaldi-data` and `language_model` directories:
+
+    rm -rf build/ kaldi-data/ language_model/
+  
+Get new Estonian models:
+
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-08-08.tgz | tar xvz 
+
+Initialize the new models:
+
+    make .init
+  
 
 ## Usage ##
 
@@ -140,11 +169,11 @@ For example:
 Result (if everything goes fine, after about 36 minutes later (audio file was 8:35 in length, resulting in realtime factor of 4.2)): 
 
     # head -5 build/output/intervjuu201306211256.txt
-	Palgainfoagentuur koostöös CV Online ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd Palgainfo Agentuuri juht Kadri Seeder tervist.
-	Kui laiapõhjaline see uuring oli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
-	Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmeid.
-	Mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate tööotsijate uuringusse väga põgusalt sisse.
-	Need tulemused tulevad juuli käigus.
+    Palgainfoagentuur koostöös CV Online ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd Palgainfo Agentuuri juht Kadri Seeder tervist.
+    Kui laiapõhjaline see uuring oli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+    Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmeid.
+    Mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate tööotsijate uuringusse väga põgusalt sisse.
+    Need tulemused tulevad juuli käigus.
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
