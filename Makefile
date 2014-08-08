@@ -217,7 +217,7 @@ build/trans/%/mfcc: build/trans/%/spk2utt
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	sid/compute_vad_decision.sh --nj $(njobs) --cmd "$$decode_cmd" \
-		build/trans/$* build/trans/$x/exp/make_vad $@  || exit 1
+		build/trans/$* build/trans/$*/exp/make_vad $@  || exit 1
 	
 # First, decode using tri3b_mmi (LDA+MLLT+SAT+MMI trained triphones)
 build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b/graph_prunedlm build/fst/tri3b/final.mdl build/fst/tri3b_mmi/final.mdl build/trans/%/mfcc
