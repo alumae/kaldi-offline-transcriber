@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# This is a copy of steps/lmrescore.sh, except that it does fstproject 
-# on newlm's G.fst 'offline' before running lattice-lmrescore, in order
-# to save memory that is used in parallel
+# This is a copy of steps/lmrescore.sh, except that it expects the newlm to be already output-projected
 
 # Begin configuration section.
 mode=4
@@ -31,7 +29,7 @@ outdir=$5
 
 oldlm=$oldlang/G.fst
 newlm=$newlang/G.fst
-newlm_projected=$outdir/G_newlm_projected.fst
+
 ! cmp $oldlang/words.txt $newlang/words.txt && echo "Warning: vocabularies may be incompatible."
 [ ! -f $oldlm ] && echo Missing file $oldlm && exit 1;
 [ ! -f $newlm ] && echo Missing file $newlm && exit 1;
@@ -42,10 +40,10 @@ mkdir -p $outdir/log
 
 oldlmcommand="fstproject --project_output=true $oldlm |"
 
-if [ $newlm -nt $newlm_projected ]; then
-  # Prepare projected newlm 'offline', to avoid running it in parallel with lattice-lmrescore
-  fstproject --project_output=true $newlm > $newlm_projected || exit 1;
-fi
+#if [ $newlm -nt $newlm_projected ]; then
+#  # Prepare projected newlm 'offline', to avoid running it in parallel with lattice-lmrescore
+#  fstproject --project_output=true $newlm > $newlm_projected || exit 1;
+#fi
 
 
 phi=`grep -w '#0' $newlang/words.txt | awk '{print $2}'`
@@ -71,7 +69,7 @@ case "$mode" in
   1) # 1 is inexact, it's the original way of doing it.
     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlmcommand" ark:-  \| \
-      lattice-lmrescore --lm-scale=1.0 ark:- $newlm_projected "ark,t:|gzip -c>$outdir/lat.JOB.gz" \
+      lattice-lmrescore --lm-scale=1.0 ark:- $newlm "ark,t:|gzip -c>$outdir/lat.JOB.gz" \
       || exit 1;
     ;;
   2)  # 2 is equivalent to 1, but using more basic operations, combined.
@@ -81,7 +79,7 @@ case "$mode" in
       lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
       lattice-determinize ark:- ark:- \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $newlm |" ark:- \| \
+      lattice-compose ark:- $newlm  ark:- \| \
       lattice-determinize ark:- ark:- \| \
       gzip -c \>$outdir/lat.JOB.gz || exit 1;
     ;;
@@ -127,6 +125,6 @@ else
   echo "Not scoring because requested so..."
 fi
 
-rm -f $newlm_projected
+#rm -f $newlm_projected
 
 exit 0;

@@ -9,15 +9,10 @@ import sys
 import re
 import datetime
 import locale
+import argparse
 
 
-topicseg_file = ""
 
-def option_handler_t(name):
-    """Specify the topicseg file.
-    """
-    topicseg_file = name
-    return
 
 def print_header(filename):
     now = datetime.datetime.now()
@@ -30,11 +25,12 @@ def print_footer():
     print '</Episode>'
     print '</Trans>'
     
-def print_speakers(speakers):
+def print_speakers(speakers, speaker_table):
     print "<Speakers>"
     i = 1
     for v in sorted(speakers.values()):
-        print '<Speaker id="%s" name="K%d" check="no" dialect="native" accent="" scope="local" type="male"/>' % (v, i)
+        speaker_name = speaker_table.get(v)
+        print '<Speaker id="%s" name="%s" check="no" dialect="native" accent="" scope="local" type="male"/>' % (v, speaker_name)
         i += 1
     print "</Speakers>"
     print '<Episode>'
@@ -72,6 +68,28 @@ def print_topics(topic_last_lines):
     
 if __name__ == '__main__':
     
+    topicseg_file = ""
+
+    parser = argparse.ArgumentParser(description='Convert hyp to trs file')
+    parser.add_argument('-s', '--sid', help='Speaker ID file, with lines in format <speaker_code> <speaker full name>')
+    parser.add_argument('-t', '--topics', help='Topic segmentation file')
+    args = parser.parse_args()
+    
+    if args.topics:
+      print >> sys.stderr, "Using %s for topic segmentation" % args.topics 
+      topicseg_file = args.topics
+
+    if args.topics:
+      print >> sys.stderr, "Using %s for topic segmentation" % args.topics 
+      topicseg_file = args.topics
+
+    speaker_realnames = {}
+    if args.sid:
+      print >> sys.stderr, "Using %s for speaker ID" % args.sid
+      for l in open(args.sid):
+        fields = l.split(None, 1)
+        speaker_realnames[fields[0]] = fields[1].strip()
+    
     lines = []
     for l in sys.stdin:
         m = re.match("^(.*) \((.*)_(\d+\.\d+)[_-](\d+\.\d+)_(\S+)(\s+\S+)?\)$", l)
@@ -86,10 +104,13 @@ if __name__ == '__main__':
             raise Exception("cannot process line: " + l)
     speakers = {}
     num_speakers = 0
+    speaker_table = {}
     for line in lines:
         speaker = line[4]
         if not speakers.has_key(speaker):
-            speakers[speaker] = "S%d" % (num_speakers + 1)
+            speaker_code = "S%d" % (num_speakers + 1)
+            speakers[speaker] = speaker_code
+            speaker_table[speaker_code] = speaker_realnames.get(speaker, "K%d" % (num_speakers + 1))
             num_speakers += 1
     print_header(lines[0][1])
     topic_last_lines = []
@@ -97,9 +118,7 @@ if __name__ == '__main__':
         topic_last_lines = [int(s) for s in open(topicseg_file).readline()[1:-2].split(",")]
         print_topics(topic_last_lines)
         
-    print_speakers(speakers)  
-    
-    
+    print_speakers(speakers, speaker_table)  
     
     last_speaker = ""
     

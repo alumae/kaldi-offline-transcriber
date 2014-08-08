@@ -114,7 +114,7 @@ Run this once:
     make .init
     
 This compiles all the necessary files from original model files that are used
-during decoding (takes some time).
+during decoding (takes around 30 minutes).
 
 Note that all files that are created during initialization and decoding are
 put under the `build` subdirectory. So, if you feel that you messed something up and
@@ -140,12 +140,11 @@ For example:
 Result (if everything goes fine, after about 36 minutes later (audio file was 8:35 in length, resulting in realtime factor of 4.2)): 
 
     # head -5 build/output/intervjuu201306211256.txt
-    Palgainfoagentuure koostöösse see onlain ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder tervist.
-    Kui laiapõhjaline suurim kooli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
-    Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmed.
-    Seda küll mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate töövõtjate uuringusse väga põgusalt sisse.
-    Need tulemused tulevad juuli käigus.
-
+	Palgainfoagentuur koostöös CV Online ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd Palgainfo Agentuuri juht Kadri Seeder tervist.
+	Kui laiapõhjaline see uuring oli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+	Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmeid.
+	Mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate tööotsijate uuringusse väga põgusalt sisse.
+	Need tulemused tulevad juuli käigus.
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.

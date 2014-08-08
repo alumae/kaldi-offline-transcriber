@@ -3,6 +3,10 @@ SHELL := /bin/bash
 # Use this file to override various settings
 -include Makefile.options
 
+# Set to 'yes' if you want to do speaker ID for trs files
+DO_SPEAKER_ID?=yes
+SID_THRESHOLD?=13
+
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 
@@ -12,7 +16,7 @@ njobs ?= 1
 # How many threads to use in each process
 nthreads ?= 1
 
-PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnetbin:$(KALDI_ROOT)/src/nnet-cpubin/:$(KALDI_ROOT)/src/kwsbin:$(PATH)
+PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnetbin:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/ivectorbin:$(PATH)
 export train_cmd=run.pl
 export decode_cmd=run.pl
 export cuda_cmd=run.pl
@@ -52,6 +56,7 @@ export
 	rm -f steps utils
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/steps
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/utils
+	ln -s $(KALDI_ROOT)/egs/sre08/v1/sid
 	mkdir -p src-audio
 
 .lang: build/fst/data/mainlm build/fst/data/prunedlm build/fst/data/compounderlm
@@ -63,7 +68,7 @@ build/fst/data/dict build/fst/data/mainlm: $(LM) $(VOCAB)
 	rm -rf build/fst/data/dict build/fst/data/mainlm
 	mkdir -p build/fst/data/dict build/fst/data/mainlm
 	cp -r $(THIS_DIR)/kaldi-data/dict/* build/fst/data/dict
-	rm build/fst/data/dict/lexicon.txt
+	rm -f build/fst/data/dict/lexicon.txt build/fst/data/dict/lexiconp.txt
 	cat models/etc/filler16k.dict | egrep -v "^<.?s>"   > build/fst/data/dict/lexicon.txt
 	cat $(VOCAB) | perl -npe 's/\(\d\)(\s)/\1/' >> build/fst/data/dict/lexicon.txt
 	utils/prepare_lang.sh build/fst/data/dict "++garbage++" build/fst/data/dict/tmp build/fst/data/mainlm
@@ -77,6 +82,11 @@ build/fst/data/dict build/fst/data/mainlm: $(LM) $(VOCAB)
 		 fstrmepsilon > build/fst/data/mainlm/G.fst
 	fstisstochastic build/fst/data/mainlm/G.fst || echo "Warning: LM not stochastic"
 
+build/fst/data/mainlm_projected: build/fst/data/mainlm
+	rm -rf $@
+	mkdir -p $@
+	cp -r $^/* $@
+	fstproject --project_output=true $^/G.fst > $@/G.fst
 
 build/fst/data/prunedlm: build/fst/data/mainlm $(PRUNED_LM)
 	rm -rf $@
@@ -105,9 +115,10 @@ build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 		arpa2fst  - | fstprint | \
 		utils/s2eps.pl | fstcompile --isymbols=$@/words.txt --osymbols=$@/words.txt > $@/G.fst 
 		
-
 build/fst/%/final.mdl:
-	cp -r $(THIS_DIR)/kaldi-data/$* `dirname $@`
+	rm -rf `dirname $@`
+	mkdir -p `dirname $@`
+	cp -r $(THIS_DIR)/kaldi-data/$*/* `dirname $@`
 	
 build/fst/%/graph_mainlm: build/fst/data/mainlm build/fst/%/final.mdl
 	rm -rf $@
@@ -204,7 +215,9 @@ build/trans/%/mfcc: build/trans/%/spk2utt
 	rm -rf $@
 	steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --cmd "$$train_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
-	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1;
+	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
+	sid/compute_vad_decision.sh --nj $(njobs) --cmd "$$decode_cmd" \
+		build/trans/$* build/trans/$x/exp/make_vad $@  || exit 1
 	
 # First, decode using tri3b_mmi (LDA+MLLT+SAT+MMI trained triphones)
 build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b/graph_prunedlm build/fst/tri3b/final.mdl build/fst/tri3b_mmi/final.mdl build/trans/%/mfcc
@@ -221,16 +234,17 @@ build/trans/%/nnet5c1_pruned/decode/log: build/trans/%/tri3b_mmi_pruned/decode/l
 	rm -rf build/trans/$*/nnet5c1_pruned
 	mkdir -p build/trans/$*/nnet5c1_pruned
 	(cd build/trans/$*/nnet5c1_pruned; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	steps/decode_nnet_cpu.sh --num-threads $(nthreads) --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+	steps/nnet2/decode.sh --num-threads $(nthreads) --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
     --transform-dir build/trans/$*/tri3b_mmi_pruned/decode \
      build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
 	(cd build/trans/$*/nnet5c1_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
-build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pruned/decode/log build/fst/data/mainlm
+# Rescore with a larger language model
+build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pruned/decode/log build/fst/data/mainlm_projected
 	rm -rf build/trans/$*/nnet5c1_pruned_rescored_main
 	mkdir -p build/trans/$*/nnet5c1_pruned_rescored_main
 	(cd build/trans/$*/nnet5c1_pruned_rescored_main; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	local/lmrescore_lowmem.sh --cmd "$$decode_cmd" --mode 1 build/fst/data/prunedlm build/fst/data/mainlm \
+	local/lmrescore_lowmem.sh --cmd "$$decode_cmd" --mode 1 build/fst/data/prunedlm build/fst/data/mainlm_projected \
 		build/trans/$* build/trans/$*/nnet5c1_pruned/decode build/trans/$*/nnet5c1_pruned_rescored_main/decode || exit 1;
 	(cd build/trans/$*/nnet5c1_pruned_rescored_main; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
@@ -257,16 +271,21 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 
 %.hyp: %.segmented.ctm
 	cat $^ | python scripts/segmented-ctm-to-hyp.py > $@
-	
-%.trs: %.hyp
+
+ifeq "yes" "$(DO_SPEAKER_ID)"
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp build/trans/%/sid-result.txt
+	cat build/trans/$*/$(FINAL_PASS).hyp | python scripts/hyp2trs.py --sid build/trans/$*/sid-result.txt > $@
+else
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp
 	cat $^ | python scripts/hyp2trs.py > $@
+endif
 
 %.sbv: %.hyp
 	cat $^ | python scripts/hyp2sbv.py > $@
 	
 %.txt: %.hyp
 	cat $^  | perl -npe 'use locale; s/ \(\S+\)/\./; $$_= ucfirst();' > $@
-	
+
 build/output/%.trs: build/trans/%/$(FINAL_PASS).trs	
 	mkdir -p `dirname $@`
 	cp $^ $@
@@ -287,7 +306,36 @@ build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
 	mkdir -p `dirname $@`
 	cp $^ $@
 
-	
+### Speaker ID stuff
+# i-vectors for each speaker in our audio file
+build/trans/%/ivectors: build/trans/%/mfcc
+	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) \
+		$(THIS_DIR)/kaldi-data/extractor_2048_top500 build/trans/$* $@
+
+# a cross product of train and test speakers
+build/trans/%/sid-trials.txt: build/trans/%/ivectors
+	cut -f 1 -d " " $(THIS_DIR)/kaldi-data/ivectors_train_top500/spk_ivector.scp | \
+	while read a; do \
+		cut -f 1 -d " " build/trans/$*/ivectors/spk_ivector.scp | \
+		while read b; do \
+			echo "$$a $$b"; \
+		done ; \
+	done > $@
+
+# similarity scores
+build/trans/%/sid-scores.txt: build/trans/%/sid-trials.txt
+	ivector-plda-scoring \
+		"ivector-copy-plda --smoothing=0.0 $(THIS_DIR)/kaldi-data/ivectors_train_top500/plda - |" \
+		"ark:ivector-subtract-global-mean scp:$(THIS_DIR)/kaldi-data/ivectors_train_top500/spk_ivector.scp ark:- |" \
+		"ark:ivector-subtract-global-mean scp:build/trans/$*/ivectors/spk_ivector.scp ark:- |" \
+   build/trans/$*/sid-trials.txt $@
+
+# pick speakers above the threshold
+build/trans/%/sid-result.txt: build/trans/%/sid-scores.txt
+	cat build/trans/$*/sid-scores.txt | sort -u -k 2,2  -k 3,3nr | sort -u -k2,2 | \
+	awk 'int($$3)>=$(SID_THRESHOLD)' | perl -npe 's/(\S+) \S+-(S\d+) \S+/\2 \1/; s/-/ /g' > $@
+
+
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
 .%.clean:
 	rm -rf build/audio/base/$*.wav build/audio/segmented/$* build/diarization/$* build/trans/$*
