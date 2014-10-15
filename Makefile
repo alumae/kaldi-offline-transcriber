@@ -4,6 +4,7 @@ SHELL := /bin/bash
 -include Makefile.options
 
 # Set to 'yes' if you want to do speaker ID for trs files
+# Assumes you have models for speaker ID
 DO_SPEAKER_ID?=yes
 SID_THRESHOLD?=13
 
@@ -16,7 +17,8 @@ njobs ?= 1
 # How many threads to use in each process
 nthreads ?= 1
 
-PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnetbin:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/ivectorbin:$(PATH)
+PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/online2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/lmbin:$(PATH):$(KALDI_ROOT)/src/ivectorbin:$(PATH)
+
 export train_cmd=run.pl
 export decode_cmd=run.pl
 export cuda_cmd=run.pl
@@ -53,56 +55,40 @@ export
 .init: .kaldi .lang .composed_lms
 
 .kaldi:
-	rm -f steps utils
+	rm -f steps utils sid
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/steps
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/utils
 	ln -s $(KALDI_ROOT)/egs/sre08/v1/sid
 	mkdir -p src-audio
 
-.lang: build/fst/data/mainlm build/fst/data/prunedlm build/fst/data/compounderlm
+.lang: build/fst/data/largelm build/fst/data/prunedlm build/fst/data/compounderlm
 
 .composed_lms: build/fst/tri3b/graph_prunedlm 
 
 # Convert dict and LM to FST format
-build/fst/data/dict build/fst/data/mainlm: $(LM) $(VOCAB)
-	rm -rf build/fst/data/dict build/fst/data/mainlm
-	mkdir -p build/fst/data/dict build/fst/data/mainlm
+build/fst/data/dict build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB)
+	rm -rf build/fst/data/dict build/fst/data/prunedlm
+	mkdir -p build/fst/data/dict build/fst/data/prunedlm
 	cp -r $(THIS_DIR)/kaldi-data/dict/* build/fst/data/dict
 	rm -f build/fst/data/dict/lexicon.txt build/fst/data/dict/lexiconp.txt
 	cat models/etc/filler16k.dict | egrep -v "^<.?s>"   > build/fst/data/dict/lexicon.txt
 	cat $(VOCAB) | perl -npe 's/\(\d\)(\s)/\1/' >> build/fst/data/dict/lexicon.txt
-	utils/prepare_lang.sh build/fst/data/dict "++garbage++" build/fst/data/dict/tmp build/fst/data/mainlm
-	gunzip -c $(LM) | \
-		grep -v '<s> <s>' | \
-		grep -v '</s> <s>' | \
-		grep -v '</s> </s>' | \
-		arpa2fst - | fstprint | \
-		utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=build/fst/data/mainlm/words.txt \
-			--osymbols=build/fst/data/mainlm/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-		 fstrmepsilon > build/fst/data/mainlm/G.fst
-	fstisstochastic build/fst/data/mainlm/G.fst || echo "Warning: LM not stochastic"
-
-build/fst/data/mainlm_projected: build/fst/data/mainlm
-	rm -rf $@
-	mkdir -p $@
-	cp -r $^/* $@
-	fstproject --project_output=true $^/G.fst > $@/G.fst
-
-build/fst/data/prunedlm: build/fst/data/mainlm $(PRUNED_LM)
-	rm -rf $@
-	mkdir -p $@
-	cp -r build/fst/data/mainlm/* $@
-	rm $@/G.fst
+	utils/prepare_lang.sh build/fst/data/dict "++garbage++" build/fst/data/dict/tmp build/fst/data/prunedlm
 	gunzip -c $(PRUNED_LM) | \
 		grep -v '<s> <s>' | \
 		grep -v '</s> <s>' | \
 		grep -v '</s> </s>' | \
 		arpa2fst - | fstprint | \
-		utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$@/words.txt \
-			--osymbols=$@/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-		 fstrmepsilon > $@/G.fst
-	fstisstochastic $@/G.fst || echo "Warning: LM not stochastic"
+		utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=build/fst/data/prunedlm/words.txt \
+			--osymbols=build/fst/data/prunedlm/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+		 fstrmepsilon > build/fst/data/prunedlm/G.fst
+	fstisstochastic build/fst/data/prunedlm/G.fst || echo "Warning: LM not stochastic"
 
+build/fst/data/largelm: build/fst/data/prunedlm $(LM)
+	rm -rf $@
+	mkdir -p $@
+	utils/build_const_arpa_lm.sh \
+		$(LM) build/fst/data/prunedlm $@
 
 build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 	rm -rf $@
@@ -120,10 +106,6 @@ build/fst/%/final.mdl:
 	mkdir -p `dirname $@`
 	cp -r $(THIS_DIR)/kaldi-data/$*/* `dirname $@`
 	
-build/fst/%/graph_mainlm: build/fst/data/mainlm build/fst/%/final.mdl
-	rm -rf $@
-	utils/mkgraph.sh build/fst/data/mainlm build/fst/$* $@
-
 build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 	rm -rf $@
 	utils/mkgraph.sh build/fst/data/prunedlm build/fst/$* $@
@@ -240,13 +222,19 @@ build/trans/%/nnet5c1_pruned/decode/log: build/trans/%/tri3b_mmi_pruned/decode/l
 	(cd build/trans/$*/nnet5c1_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
 
 # Rescore with a larger language model
-build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pruned/decode/log build/fst/data/mainlm_projected
+build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pruned/decode/log build/fst/data/largelm
 	rm -rf build/trans/$*/nnet5c1_pruned_rescored_main
 	mkdir -p build/trans/$*/nnet5c1_pruned_rescored_main
 	(cd build/trans/$*/nnet5c1_pruned_rescored_main; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	local/lmrescore_lowmem.sh --cmd "$$decode_cmd" --mode 1 build/fst/data/prunedlm build/fst/data/mainlm_projected \
-		build/trans/$* build/trans/$*/nnet5c1_pruned/decode build/trans/$*/nnet5c1_pruned_rescored_main/decode || exit 1;
-	(cd build/trans/$*/nnet5c1_pruned_rescored_main; ln -s ../../../fst/tri3b/graph_prunedlm graph)
+	steps/lmrescore_const_arpa.sh \
+	  build/fst/data/prunedlm build/fst/data/largelm \
+	  build/trans/$* \
+	  build/trans/$*/nnet5c1_pruned/decode build/trans/$*/nnet5c1_pruned_rescored_main/decode || exit 1;
+	cp -r --preserve=links build/trans/$*/nnet5c1_pruned/graph build/trans/$*/nnet5c1_pruned_rescored_main/	
+
+
+
+
 
 %/decode/.ctm: %/decode/log
 	steps/get_ctm.sh  `dirname $*` $*/graph $*/decode
