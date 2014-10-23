@@ -11,6 +11,9 @@ SID_THRESHOLD?=13
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 
+# Location of the Java binary
+JAVA_BIN?=/usr/bin/java
+
 # How many processes to use for one transcription task
 njobs ?= 1
 

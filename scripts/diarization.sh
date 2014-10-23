@@ -45,7 +45,11 @@ show="show"
 uem="$2"
 
 #set the java virtual machine program
-java=/usr/bin/java
+java=java
+if [ -n $JAVA_BIN ]; then
+  java=$JAVA_BIN
+fi
+
 
 #define the directory where the results will be saved
 datadir=`dirname $2`
