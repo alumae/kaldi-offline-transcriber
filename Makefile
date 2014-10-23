@@ -52,7 +52,7 @@ LD_LIBRARY_PATH=$(KALDI_ROOT)/tools/openfst/lib
 export
 
 # Call this (once) before using the system
-.init: .kaldi .lang .composed_lms
+.init: .kaldi .lang
 
 .kaldi:
 	rm -f steps utils sid
@@ -61,9 +61,8 @@ export
 	ln -s $(KALDI_ROOT)/egs/sre08/v1/sid
 	mkdir -p src-audio
 
-.lang: build/fst/data/largelm build/fst/data/prunedlm build/fst/data/compounderlm
+.lang: build/fst/data/prunedlm build/fst/tri3b/graph_prunedlm build/fst/data/largelm build/fst/data/compounderlm
 
-.composed_lms: build/fst/tri3b/graph_prunedlm 
 
 # Convert dict and LM to FST format
 build/fst/data/dict build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB)
