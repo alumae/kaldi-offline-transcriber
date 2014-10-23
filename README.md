@@ -1,5 +1,18 @@
 # Kaldi Offline Transcriber #
 
+## Updates ##
+
+### 2014-10-23 ###
+  
+  * Now uses language model rescoring using "constant ARPA" LM implemented recently in Kaldi, which makes LM rescoring faster and needs less memory. You have to update Kaldi to use this.
+  * Uploaded new Estonian acoustic and language models. Word error rate on broadcast conversations is about 18%.
+
+### 2014-08-03 ###
+ 
+  * Implemented very experimental speaker ID system using i-vectors
+
+## Introduction ##
+
 This is an offline transcription system based on Kaldi (http://kaldi.sourceforge.net), with some Estonian specific
 aspects. 
 
@@ -56,9 +69,8 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
   
 ### Kaldi ###
 
-IMPORTANT: The system works agains Kaldi trunk as of 2014-08-07. The system
+IMPORTANT: The system works agains Kaldi trunk as of 2014-10-15. The system
 may not work with Kaldi revisions that are a lot (months) older or newer than that.
-
 
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
 http://kaldi.sourceforge.net/install.html. Install the `kaldi-trunk` version.
@@ -143,7 +155,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-08-08.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-23.tgz | tar xvz 
 
 Initialize the new models:
 
