@@ -211,7 +211,7 @@ build/trans/%/spk2utt: build/trans/%/utt2spk
 # MFCC calculation
 build/trans/%/mfcc: build/trans/%/spk2utt
 	rm -rf $@
-	rm -f build/trans/intervjuu201408071215/vad.scp
+	rm -f build/trans/$*/vad.scp
 	steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --cmd "$$train_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1

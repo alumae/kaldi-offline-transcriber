@@ -236,7 +236,7 @@ To enable multi-threaded execution, set the variable `nthreads` in `Makefile.opt
 
 The speedup is not quite linear. For example, decoding an audio file of 8:35 minutes takes
    
-  * 36 minutes with 1 thread (4.2x realtime)
+  * 29 minutes with 1 thread (4.2x realtime)
   * 16.5 minutes with 4 threads (1.9x realtime)
     
 The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
@@ -244,3 +244,25 @@ server has many cores but relatively little memory (say 16 cores and 16 GB RAM),
 and use up to 3 parallel decoding processes (e.g., using a queue system, such as Sun Grid Engine).
 This way, the total memory consumption should never exceed 16 GB, and the decoding happens in ~1.5x realtime.
 
+
+## One-pass decoding using online DNN models with speaker i-vectors ##
+
+Instead of the three-pass decoding strategy, one can aternatively use one-pass decoding
+using "online" DNN models that use i-vectors calculated from each speaker's speech
+as additional input to the DNN, thus providing kind-of unsupervised speaker/channel adaptation. This
+scheme is about two times faster than the default (when using one thread) but introduces
+about 10% relatively more errors: the WER on Estonian radio talk shows when using the default scheme
+is currently 17.7%, when using the one-pass decong stratgey it goes up to 19.3%.
+
+You can activate the scheme by defining `DO_NNET2_ONLINE=yes` variable in `Makefile.options`, or using
+the `--nnet2-online true` option to `speech2text.sh`.
+
+To decode the same file as above, the one-pass scheme requires
+  
+  * 15 minutes 
+  
+The one-pass scheme cannot be parallelized by increasing the number of threads, but can be parallelized 
+by increasing the number of jobs, by defining in `Makefile.options` e.g.:
+
+  njobs = 3
+  
