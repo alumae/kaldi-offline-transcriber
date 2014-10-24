@@ -71,7 +71,7 @@ export
 	ln -s $(KALDI_ROOT)/egs/sre08/v1/sid
 	mkdir -p src-audio
 
-.lang: build/fst/data/prunedlm build/fst/tri3b/graph_prunedlm build/fst/data/largelm build/fst/data/compounderlm
+.lang: build/fst/data/prunedlm build/fst/tri3b/graph_prunedlm  build/fst/nnet2_online_ivector/graph_prunedlm build/fst/data/largelm build/fst/data/compounderlm
 
 
 # Convert dict and LM to FST format
