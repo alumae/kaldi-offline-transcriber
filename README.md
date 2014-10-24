@@ -252,7 +252,7 @@ using "online" DNN models that use i-vectors calculated from each speaker's spee
 as additional input to the DNN, thus providing kind-of unsupervised speaker/channel adaptation. This
 scheme is about two times faster than the default (when using one thread) but introduces
 about 10% relatively more errors: the WER on Estonian radio talk shows when using the default scheme
-is currently 17.7%, when using the one-pass decoding stratgey it goes up to 19.3%.
+is currently 17.7%, when using the one-pass decoding strategy it goes up to 19.3%.
 
 You can activate the scheme by defining `DO_NNET2_ONLINE=yes` variable in `Makefile.options`, or using
 the `--nnet2-online true` option to `speech2text.sh`.
