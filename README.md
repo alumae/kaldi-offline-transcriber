@@ -2,6 +2,10 @@
 
 ## Updates ##
 
+### 2014-10-24 ###
+
+  * Implemented alternative transcribing scheme using online DNN models using speaker i-vector as extra input (actually wrapped the corresponding Kaldi implementation). This is requires only one pass over the audio but gives about 10% relatively more errors. This scheme can activated using the `--nnet2-online true` option to `speech2text.sh`, or the `DO_NNET2_ONLINE=yes` variable in `Makefile.options`.
+
 ### 2014-10-23 ###
   
   * Now uses language model rescoring using "constant ARPA" LM implemented recently in Kaldi, which makes LM rescoring faster and needs less memory. You have to update Kaldi to use this.
@@ -36,7 +40,6 @@ Trancription is performed in roughly 4.5x realtime on a 5 year old server, using
 E.g., transcribing a radio inteview of length 8:23 takes about 37 minutes.
 
 Memory requirements: during most of the work, less than 1 GB of memory is used.
-However, during the final rescoring pass, about 5 GB memory is used for a very short time.
 
 ## Requirements ##
 
@@ -115,7 +118,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-23.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-24.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -155,7 +158,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-23.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-24.tgz | tar xvz 
 
 Initialize the new models:
 
@@ -240,6 +243,4 @@ The lattice rescoring part that is very memory intensive is executed in a single
 server has many cores but relatively little memory (say 16 cores and 16 GB RAM), you can set `nthreads = 5`,
 and use up to 3 parallel decoding processes (e.g., using a queue system, such as Sun Grid Engine).
 This way, the total memory consumption should never exceed 16 GB, and the decoding happens in ~1.5x realtime.
-
-
 

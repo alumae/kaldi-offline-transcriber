@@ -8,6 +8,10 @@ SHELL := /bin/bash
 DO_SPEAKER_ID?=yes
 SID_THRESHOLD?=13
 
+# Do we want to do 1-pass decoding using nnet2 models instead of 3-pass decoding?
+# Should be about 3 times faster with 10% more errors
+DO_NNET2_ONLINE?=no
+
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 
@@ -35,7 +39,6 @@ PRUNED_LM ?=language_model/pruned5.vestlused-dev.splitw2.arpa.gz
 
 COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
 
-
 # Vocabulary in dict format (no pronouncation probs for now)
 VOCAB?=language_model/vestlused-dev.splitw2.dict
 
@@ -45,7 +48,11 @@ LM_SCALE?=17
 where-am-i = $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(shell dirname $(call where-am-i))
 
-FINAL_PASS=nnet5c1_pruned_rescored_main
+ifeq ($(DO_NNET2_ONLINE),yes)
+  FINAL_PASS=nnet2_online_ivector_pruned_rescored_main
+else
+  FINAL_PASS=nnet5c1_pruned_rescored_main
+endif
 
 LD_LIBRARY_PATH=$(KALDI_ROOT)/tools/openfst/lib
 
@@ -102,7 +109,14 @@ build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 		grep -v '</s> </s>' | \
 		arpa2fst  - | fstprint | \
 		utils/s2eps.pl | fstcompile --isymbols=$@/words.txt --osymbols=$@/words.txt > $@/G.fst 
-		
+
+# override some paths in nnet2 conf files
+build/fst/nnet2_online_ivector/final.mdl:
+	rm -rf `dirname $@`
+	mkdir -p `dirname $@`
+	cp -r $(THIS_DIR)/kaldi-data/nnet2_online_ivector/* `dirname $@`
+	perl -i -npe 's/=.*nnet2_online_ivector_online/=build\/fst\/nnet2_online_ivector/' build/fst/nnet2_online_ivector/conf/*.conf
+
 build/fst/%/final.mdl:
 	rm -rf `dirname $@`
 	mkdir -p `dirname $@`
@@ -197,6 +211,7 @@ build/trans/%/spk2utt: build/trans/%/utt2spk
 # MFCC calculation
 build/trans/%/mfcc: build/trans/%/spk2utt
 	rm -rf $@
+	rm -f build/trans/intervjuu201408071215/vad.scp
 	steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --cmd "$$train_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
@@ -235,7 +250,25 @@ build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pru
 	cp -r --preserve=links build/trans/$*/nnet5c1_pruned/graph build/trans/$*/nnet5c1_pruned_rescored_main/	
 
 
+### Alternatively, do 1-pass decoding using nnet2 online models
+build/trans/%/nnet2_online_ivector_pruned/decode/log: build/fst/nnet2_online_ivector/final.mdl build/fst/nnet2_online_ivector/graph_prunedlm build/trans/%/spk2utt build/trans/%/mfcc
+	rm -rf build/trans/$*/nnet2_online_ivector_pruned
+	mkdir -p build/trans/$*/nnet2_online_ivector_pruned
+	(cd build/trans/$*/nnet2_online_ivector_pruned; for f in ../../../fst/nnet2_online_ivector/*; do ln -s $$f; done)
+	steps/online/nnet2/decode.sh --config conf/decode.conf --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+      build/fst/nnet2_online_ivector/graph_prunedlm build/trans/$* `dirname $@` || exit 1;
+	(cd build/trans/$*/nnet2_online_ivector_pruned; ln -s ../../../fst/nnet2_online_ivector/graph_prunedlm graph)
 
+# Rescore nnet2 lattices with a larger language model
+build/trans/%/nnet2_online_ivector_pruned_rescored_main/decode/log: build/trans/%/nnet2_online_ivector_pruned/decode/log build/fst/data/largelm
+	rm -rf build/trans/$*/nnet2_online_ivector_pruned_rescored_main
+	mkdir -p build/trans/$*/nnet2_online_ivector_pruned_rescored_main
+	(cd build/trans/$*/nnet2_online_ivector_pruned_rescored_main; for f in ../../../fst/nnet2_online_ivector/*; do ln -s $$f; done)
+	steps/lmrescore_const_arpa.sh \
+	  build/fst/data/prunedlm build/fst/data/largelm \
+	  build/trans/$* \
+	  build/trans/$*/nnet2_online_ivector_pruned/decode build/trans/$*/nnet2_online_ivector_pruned_rescored_main/decode || exit 1;
+	cp -r --preserve=links build/trans/$*/nnet2_online_ivector_pruned/graph build/trans/$*/nnet2_online_ivector_pruned_rescored_main/	
 
 
 %/decode/.ctm: %/decode/log
