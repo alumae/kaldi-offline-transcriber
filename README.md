@@ -2,6 +2,12 @@
 
 ## Updates ##
 
+### 2014-12-04 ###
+
+  * Updated online DNN acoustic models (now they use multisplice features), which results in lower word error rate than offline SAT DNNs. Word error rate on broadcast conversations is now about 17%.
+    Made decoding using online DNNs default. Also, refactored speaker ID system a bit. *NB:* requires fairly recent Kaldi. 
+    Update Kaldi and download new models as documented below.  
+
 ### 2014-10-24 ###
 
   * Implemented alternative transcribing scheme using online DNN models using speaker i-vector as extra input (actually wrapped the corresponding Kaldi implementation). This is requires only one pass over the audio but gives about 10% relatively more errors. This scheme can activated using the `--nnet2-online true` option to `speech2text.sh`, or the `DO_NNET2_ONLINE=yes` variable in `Makefile.options`.
@@ -158,7 +164,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-24.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-12-05.tgz | tar xvz 
 
 Initialize the new models:
 

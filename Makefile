@@ -10,7 +10,7 @@ SID_THRESHOLD?=25
 
 # Do we want to do 1-pass decoding using nnet2 models instead of 3-pass decoding?
 # Should be about 3 times faster with 10% more errors
-DO_NNET2_ONLINE?=no
+DO_NNET2_ONLINE?=yes
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
@@ -35,7 +35,7 @@ export mkgraph_cmd=run.pl
 LM ?=language_model/pruned.vestlused-dev.splitw2.arpa.gz
 
 # More aggressively pruned LM, used in decoding
-PRUNED_LM ?=language_model/pruned5.vestlused-dev.splitw2.arpa.gz
+PRUNED_LM ?=language_model/pruned6.vestlused-dev.splitw2.arpa.gz
 
 COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
 
@@ -115,7 +115,7 @@ build/fst/nnet2_online_ivector/final.mdl:
 	rm -rf `dirname $@`
 	mkdir -p `dirname $@`
 	cp -r $(THIS_DIR)/kaldi-data/nnet2_online_ivector/* `dirname $@`
-	perl -i -npe 's/=.*nnet2_online_ivector_online/=build\/fst\/nnet2_online_ivector/' build/fst/nnet2_online_ivector/conf/*.conf
+	perl -i -npe 's/=.*nnet2_online_ivector([_-\w]*)online/=build\/fst\/nnet2_online_ivector/' build/fst/nnet2_online_ivector/conf/*.conf
 
 build/fst/%/final.mdl:
 	rm -rf `dirname $@`
