@@ -43,24 +43,24 @@ if $nnet2_online; then
   nnet2_online_arg="DO_NNET2_ONLINE=yes"
 fi
 
-(cd $BASEDIR; make $nthreads_arg $nnet2_online_arg build/output/${basename%.*}.{txt,trs,ctm,sbv} || exit 1; if $clean ; then make .${basename%.*}.clean; fi)
+(cd $BASEDIR; make $nthreads_arg $nnet2_online_arg build/output/$basename.{txt,trs,ctm,sbv} || exit 1; if $clean ; then make .$basename.clean; fi)
 
 echo "Finished transcribing, result is in files $BASEDIR/build/output/${basename%.*}.{txt,trs,ctm,sbv}"
 
 if [ ! -z $txt ]; then
-  cp $BASEDIR/build/output/${basename%.*}.txt $txt
+  cp $BASEDIR/build/output/${basename}.txt $txt
   echo $txt
 fi
 
 if [ ! -z $trs ]; then
-  cp $BASEDIR/build/output/${basename%.*}.trs $trs
+  cp $BASEDIR/build/output/${basename}.trs $trs
 fi
 
 if [ ! -z $ctm ]; then
-  cp $BASEDIR/build/output/${basename%.*}.ctm $ctm
+  cp $BASEDIR/build/output/${basename}.ctm $ctm
 fi
 
 if [ ! -z $sbv ]; then
-  cp $BASEDIR/build/output/${basename%.*}.sbv $sbv
+  cp $BASEDIR/build/output/${basename}.sbv $sbv
 fi
 
