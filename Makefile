@@ -6,7 +6,7 @@ SHELL := /bin/bash
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
 DO_SPEAKER_ID?=yes
-SID_THRESHOLD?=13
+SID_THRESHOLD?=25
 
 # Do we want to do 1-pass decoding using nnet2 models instead of 3-pass decoding?
 # Should be about 3 times faster with 10% more errors
@@ -211,12 +211,12 @@ build/trans/%/spk2utt: build/trans/%/utt2spk
 # MFCC calculation
 build/trans/%/mfcc: build/trans/%/spk2utt
 	rm -rf $@
-	rm -f build/trans/$*/vad.scp
 	steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --cmd "$$train_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
-	sid/compute_vad_decision.sh --nj $(njobs) --cmd "$$decode_cmd" \
-		build/trans/$* build/trans/$*/exp/make_vad $@  || exit 1
+
+
+
 	
 # First, decode using tri3b_mmi (LDA+MLLT+SAT+MMI trained triphones)
 build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b/graph_prunedlm build/fst/tri3b/final.mdl build/fst/tri3b_mmi/final.mdl build/trans/%/mfcc
@@ -296,8 +296,8 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat $^ | python scripts/segmented-ctm-to-hyp.py > $@
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp build/trans/%/sid-result.txt
-	cat build/trans/$*/$(FINAL_PASS).hyp | python scripts/hyp2trs.py --sid build/trans/$*/sid-result.txt > $@
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp build/sid/%/sid-result.txt
+	cat build/trans/$*/$(FINAL_PASS).hyp | python scripts/hyp2trs.py --sid build/sid/$*/sid-result.txt > $@
 else
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp
 	cat $^ | python scripts/hyp2trs.py > $@
@@ -330,38 +330,61 @@ build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
 	cp $^ $@
 
 ### Speaker ID stuff
+
+# MFCC for Speaker ID, since the features for MFCC are different from speech recognition
+build/sid/%/wav.scp: build/trans/%/wav.scp
+	mkdir -p `dirname $@`
+	ln $^ $@
+
+build/sid/%/utt2spk : build/trans/%/utt2spk
+	mkdir -p `dirname $@`
+	ln $^ $@
+
+build/sid/%/spk2utt : build/trans/%/spk2utt
+	mkdir -p `dirname $@`
+	ln $^ $@
+	
+build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt
+	rm -rf $@
+	rm -f build/sid/$*/vad.scp
+	steps/make_mfcc.sh --mfcc-config conf/mfcc_sid.conf --cmd "$$train_cmd" --nj $(njobs) \
+		build/sid/$* build/sid/$*/exp/make_mfcc $@ || exit 1
+	steps/compute_cmvn_stats.sh build/sid/$* build/sid/$*/exp/make_mfcc $@ || exit 1
+	sid/compute_vad_decision.sh --nj $(njobs) --cmd "$$decode_cmd" \
+		build/sid/$* build/sid/$*/exp/make_vad $@  || exit 1
+
 # i-vectors for each speaker in our audio file
-build/trans/%/ivectors: build/trans/%/mfcc
+build/sid/%/ivectors: build/sid/%/mfcc
 	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) \
-		$(THIS_DIR)/kaldi-data/extractor_2048_top500 build/trans/$* $@
+		$(THIS_DIR)/kaldi-data/extractor_2048_top500 build/sid/$* $@
 
 # a cross product of train and test speakers
-build/trans/%/sid-trials.txt: build/trans/%/ivectors
+build/sid/%/sid-trials.txt: build/sid/%/ivectors
 	cut -f 1 -d " " $(THIS_DIR)/kaldi-data/ivectors_train_top500/spk_ivector.scp | \
 	while read a; do \
-		cut -f 1 -d " " build/trans/$*/ivectors/spk_ivector.scp | \
+		cut -f 1 -d " " build/sid/$*/ivectors/spk_ivector.scp | \
 		while read b; do \
 			echo "$$a $$b"; \
 		done ; \
 	done > $@
 
 # similarity scores
-build/trans/%/sid-scores.txt: build/trans/%/sid-trials.txt
+build/sid/%/sid-scores.txt: build/sid/%/sid-trials.txt
 	ivector-plda-scoring \
-		"ivector-copy-plda --smoothing=0.0 $(THIS_DIR)/kaldi-data/ivectors_train_top500/plda - |" \
+		"ivector-copy-plda --smoothing=0.1 $(THIS_DIR)/kaldi-data/ivectors_train_top500/plda - |" \
 		"ark:ivector-subtract-global-mean scp:$(THIS_DIR)/kaldi-data/ivectors_train_top500/spk_ivector.scp ark:- |" \
-		"ark:ivector-subtract-global-mean scp:build/trans/$*/ivectors/spk_ivector.scp ark:- |" \
-   build/trans/$*/sid-trials.txt $@
+		"ark:ivector-subtract-global-mean scp:build/sid/$*/ivectors/spk_ivector.scp ark:- |" \
+   build/sid/$*/sid-trials.txt $@
 
 # pick speakers above the threshold
-build/trans/%/sid-result.txt: build/trans/%/sid-scores.txt
-	cat build/trans/$*/sid-scores.txt | sort -u -k 2,2  -k 3,3nr | sort -u -k2,2 | \
+build/sid/%/sid-result.txt: build/sid/%/sid-scores.txt
+	cat build/sid/$*/sid-scores.txt | sort -u -k 2,2  -k 3,3nr | sort -u -k2,2 | \
 	awk 'int($$3)>=$(SID_THRESHOLD)' | perl -npe 's/(\S+) \S+-(S\d+) \S+/\2 \1/; s/-/ /g' > $@
 
 
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
 .%.clean:
-	rm -rf build/audio/base/$*.wav build/audio/segmented/$* build/diarization/$* build/trans/$*
+	rm -rf build/audio/base/$*.wav build/audio/segmented/$* build/diarization/$* build/trans/$* build/sid/$*
 
 # Also deletes the output files	
 .%.cleanest: .%.clean
