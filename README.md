@@ -2,6 +2,10 @@
 
 ## Updates ##
 
+### 2014-12-17 ###
+  * Fixed handling of names with multipart surnames, etc (such as Erik-Niiles Kross) in the speaker ID system. Download new models.
+     
+
 ### 2014-12-04 ###
 
   * Updated online DNN acoustic models (now they use multisplice features), which results in lower word error rate than offline SAT DNNs. Word error rate on broadcast conversations is now about 17%.
@@ -124,7 +128,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-10-24.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-12-17.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -164,7 +168,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-12-05.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2014-12-17.tgz | tar xvz 
 
 Initialize the new models:
 
