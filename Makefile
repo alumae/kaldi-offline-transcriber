@@ -379,7 +379,9 @@ build/sid/%/sid-scores.txt: build/sid/%/sid-trials.txt
 # pick speakers above the threshold
 build/sid/%/sid-result.txt: build/sid/%/sid-scores.txt
 	cat build/sid/$*/sid-scores.txt | sort -u -k 2,2  -k 3,3nr | sort -u -k2,2 | \
-	awk 'int($$3)>=$(SID_THRESHOLD)' | perl -npe 's/(\S+) \S+-(S\d+) \S+/\2 \1/; s/-/ /g' > $@
+	awk 'int($$3)>=$(SID_THRESHOLD)' | perl -npe 's/(\S+) \S+-(S\d+) \S+/\2 \1/; s/-/ /g' | \
+	LC_ALL=C sort -k 2 | LC_ALL=C join -1 2 - $(THIS_DIR)/kaldi-data/ivectors_train_top500/speaker2names.txt | cut -f 2- -d " " > $@
+
 
 
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
