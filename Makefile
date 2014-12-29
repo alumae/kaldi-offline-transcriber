@@ -12,6 +12,7 @@ SID_THRESHOLD?=25
 # Should be about 3 times faster with 10% more errors
 DO_NNET2_ONLINE?=yes
 
+
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 
@@ -43,6 +44,15 @@ COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
 VOCAB?=language_model/vestlused-dev.splitw2.dict
 
 LM_SCALE?=17
+
+DO_PUNCTUATION?=yes
+
+ifeq "yes" "$(DO_PUNCTUATION)"
+	PUNCTUATOR_HIDDEN_VOCAB?=language_model/punctuator.hidden-vocab
+	PUNCTUATOR_LM?=language_model/punctuator.4g.pruned.arpa.bin
+	DOT_PUNCTUATED=.punctuated
+endif
+
 
 # Find out where this Makefile is located (this is not really needed)
 where-am-i = $(lastword $(MAKEFILE_LIST))
@@ -296,10 +306,10 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat $^ | python scripts/segmented-ctm-to-hyp.py > $@
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp build/sid/%/sid-result.txt
-	cat build/trans/$*/$(FINAL_PASS).hyp | python scripts/hyp2trs.py --sid build/sid/$*/sid-result.txt > $@
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).hyp build/sid/%/sid-result.txt
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).hyp | python scripts/hyp2trs.py --sid build/sid/$*/sid-result.txt > $@
 else
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS).hyp
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).hyp
 	cat $^ | python scripts/hyp2trs.py > $@
 endif
 
@@ -308,6 +318,14 @@ endif
 	
 %.txt: %.hyp
 	cat $^  | perl -npe 'use locale; s/ \(\S+\)/\./; $$_= ucfirst();' > $@
+
+%.punctuated.hyp: %.hyp
+	cat $^ | perl -npe 's/ \(\S+\)$$//' |  hidden-ngram -hidden-vocab $(PUNCTUATOR_HIDDEN_VOCAB) -order 4 -lm $(PUNCTUATOR_LM) -text - -keep-unk | \
+	perl -npe 's/ ,COMMA/,/g; s/ \.PERIOD/\./g' > $@.tmp
+	cat $^ | perl -npe 's/.*(\(\S+\))$$/ \1/' | paste $@.tmp - > $@
+	#rm $@.tmp
+	
+
 
 build/output/%.trs: build/trans/%/$(FINAL_PASS).trs	
 	mkdir -p `dirname $@`
