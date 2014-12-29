@@ -45,7 +45,7 @@ VOCAB?=language_model/vestlused-dev.splitw2.dict
 
 LM_SCALE?=17
 
-DO_PUNCTUATION?=yes
+DO_PUNCTUATION?=no
 
 ifeq "yes" "$(DO_PUNCTUATION)"
 	PUNCTUATOR_HIDDEN_VOCAB?=language_model/punctuator.hidden-vocab
