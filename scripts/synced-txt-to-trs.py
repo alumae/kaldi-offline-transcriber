@@ -89,7 +89,7 @@ if __name__ == '__main__':
         
         if speaker_id != last_speaker_id:
           turn = []
-          turns.append((speaker_code, turn))
+          turns.append((speakers[speaker_id], turn))
         
         content = []
         line = (start_time, end_time, content)
