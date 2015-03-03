@@ -48,9 +48,8 @@ LM_SCALE?=17
 DO_PUNCTUATION?=no
 
 ifeq "yes" "$(DO_PUNCTUATION)"
-	PUNCTUATOR_HIDDEN_VOCAB?=language_model/punctuator.hidden-vocab
-	PUNCTUATOR_LM?=language_model/punctuator.4g.pruned.arpa.bin
-	DOT_PUNCTUATED=.punctuated
+  PUNCTUATE_SYNC_TXT_CMD?=(cd ~/tools/punctuator/src; python wrapper.py)
+  DOT_PUNCTUATED=.punctuated
 endif
 
 
@@ -296,21 +295,31 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 %.segmented.ctm: %.segmented.with-compounds.ctm
 	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' > $@
 
-%.ctm: %.segmented.ctm
+%.synced.ctm: %.segmented.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
 %.with-compounds.ctm: %.segmented.with-compounds.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
+%.with-sil.ctm: %.ctm
+	cat $^ | ./scripts/ctm2with-sil-ctm.py > $@
+
+%.punctuated.synced.txt: %.synced.with-sil.ctm
+	cat $^ | cut -f 5 -d " " | perl -npe 's/\n/ /' | $(PUNCTUATE_SYNC_TXT_CMD) > $@
+
+%.synced.txt: %.synced.with-sil.ctm
+	cat $^ | cut -f 5 -d " " | perl -npe 's/\n/ /; s/<sil=\S+>//'  > $@
+
+
 %.hyp: %.segmented.ctm
 	cat $^ | python scripts/segmented-ctm-to-hyp.py > $@
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).hyp build/sid/%/sid-result.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).hyp | python scripts/hyp2trs.py --sid build/sid/$*/sid-result.txt > $@
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt > $@
 else
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).hyp
-	cat $^ | python scripts/hyp2trs.py > $@
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $*  > $@
 endif
 
 %.sbv: %.hyp
