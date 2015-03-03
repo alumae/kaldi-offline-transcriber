@@ -298,8 +298,11 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 %.synced.ctm: %.segmented.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
-%.with-compounds.ctm: %.segmented.with-compounds.ctm
+%.with-compounds.synced.ctm: %.segmented.with-compounds.ctm
 	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
+	
+%.ctm: %.synced.ctm
+	cat $^ | grep -v "<" > $@
 
 %.with-sil.ctm: %.ctm
 	cat $^ | ./scripts/ctm2with-sil-ctm.py > $@
