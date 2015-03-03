@@ -328,8 +328,8 @@ endif
 %.sbv: %.hyp
 	cat $^ | python scripts/hyp2sbv.py > $@
 	
-%.txt: %.hyp
-	cat $^  | perl -npe 'use locale; s/ \(\S+\)/\./; $$_= ucfirst();' > $@
+%.txt: %.trs
+	cat $^  | grep -v "^<" > $@
 
 %.punctuated.hyp: %.hyp
 	cat $^ | perl -npe 's/ \(\S+\)$$//' |  hidden-ngram -hidden-vocab $(PUNCTUATOR_HIDDEN_VOCAB) -order 4 -lm $(PUNCTUATOR_LM) -text - -keep-unk | \
