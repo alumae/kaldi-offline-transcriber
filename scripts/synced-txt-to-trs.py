@@ -4,6 +4,7 @@ import sys
 import re
 import argparse
 import datetime
+import codecs
 
 def print_header(filename):
   now = datetime.datetime.now()
@@ -44,6 +45,12 @@ def print_sections(sections):
       print '</Turn>' 
     print '</Section>'
 
+def titlecase(s):
+    return re.sub(re.compile(r"[\w]+('[\w]+)?", flags=re.UNICODE),
+                  lambda mo: mo.group(0)[0].upper() +
+                             mo.group(0)[1:].lower(),
+                  s)
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Convert hyp to trs file')
@@ -52,7 +59,9 @@ if __name__ == '__main__':
   args = parser.parse_args()
   
 
-
+  sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
+  sys.stdin = codecs.getreader('utf-8')(sys.stdin)
+  
   speaker_realnames = {}
   if args.sid:
     print >> sys.stderr, "Using %s for speaker ID" % args.sid
@@ -68,6 +77,7 @@ if __name__ == '__main__':
   num_speakers = 0
   speaker_table = {}
   
+  do_uppercase = True
   
   for l in sys.stdin:
     words = l.split()
@@ -97,7 +107,12 @@ if __name__ == '__main__':
         last_end_time = end_time
         last_speaker_id = speaker_id
       else:
-        content.append(word)
+        if do_uppercase:
+          content.append(titlecase(word))
+        else:
+          content.append(word)
+        do_uppercase = word.endswith(".")
+          
       
   print_header(args.fid)
   print_speakers(speakers, speaker_table)        
