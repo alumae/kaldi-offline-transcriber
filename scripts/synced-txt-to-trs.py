@@ -65,7 +65,7 @@ if __name__ == '__main__':
   speaker_realnames = {}
   if args.sid:
     print >> sys.stderr, "Using %s for speaker ID" % args.sid
-    for l in open(args.sid):
+    for l in codecs.open(args.sid, "r", "utf-8"):
       fields = l.split(None, 1)
       speaker_realnames[fields[0]] = fields[1].strip()
   
