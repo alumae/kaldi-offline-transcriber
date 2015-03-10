@@ -27,8 +27,7 @@
 
 ## Introduction ##
 
-This is an offline transcription system based on Kaldi (http://kaldi.sourceforge.net), with some Estonian specific
-aspects. 
+This is an offline transcription system for Estonian based on Kaldi (http://kaldi.sourceforge.net).
 
 The system is targetted to users who have no speech research background
 but who want to transcribe long audio recordings using automatic speech recognition.
