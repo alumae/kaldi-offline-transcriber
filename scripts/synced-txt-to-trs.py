@@ -96,6 +96,7 @@ if __name__ == '__main__':
         if abs(start_time != last_end_time) > 0.001:
           turns = []
           sections.append(turns)
+          last_speaker_id = ""
         
         if speaker_id != last_speaker_id:
           turn = []
@@ -113,7 +114,7 @@ if __name__ == '__main__':
           content.append(word)
         do_uppercase = word.endswith(".")
           
-      
+     
   print_header(args.fid)
   print_speakers(speakers, speaker_table)        
   print_sections(sections)
