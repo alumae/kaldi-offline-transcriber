@@ -1,14 +1,31 @@
 #!/bin/bash
 
 set -o errexit
-
 if [ -z $LOCALCLASSPATH ]; then
 	LOCALCLASSPATH=lib/LIUM_SpkDiarization-4.2.jar
 fi
 
 
+DO_MUSIC_DETECTION=false
+
+while getopts ":m" opt; do
+  case $opt in
+    m)
+      echo "Going to do music/jingle detection"
+      DO_MUSIC_DETECTION=true
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+
 #the MFCC file
-features="$1"
+features=${@:$OPTIND:1}
+
+#get the initial segmentation file
+uem=${@:$OPTIND+1:1}
 
 #the MFCC corresponds to sphinx 12 MFCC + Energy
 # sphinx=the mfcc was computed by the sphinx tools
@@ -41,8 +58,7 @@ fInputDescCLR="audio2sphinx,1:3:2:0:0:0,13,1:1:300:4"
 
 show="show"
 
-#get the initial segmentation file
-uem="$2"
+
 
 #set the java virtual machine program
 java=java
@@ -52,7 +68,7 @@ fi
 
 
 #define the directory where the results will be saved
-datadir=`dirname $2`
+datadir=`dirname $uem`
 
 #define where the UBM GMM is
 ubm=models/ubm.gmm
@@ -90,9 +106,7 @@ $java -Xmx1024m -classpath $LOCALCLASSPATH fr.lium.spkDiarization.programs.MSegI
 # Speech / non-speech segmentation using a set of GMMs
 $java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.programs.MDecode --trace --help \
   --fInputDesc=audio2sphinx,1:3:2:0:0:0,13,0:0:0 --fInputMask=$features --sInputMask=$iseg \
---sOutputMask=$pmsseg --dPenality=500,500,10 --tInputMask=$pmsgmm $show
-
-
+--sOutputMask=$pmsseg --dPenality=200,200,10 --tInputMask=$pmsgmm $show
 
 
 # GLR-based segmentation, make small segments
@@ -131,7 +145,7 @@ $java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.programs.MCl
 --sOutputMask=$adjseg $show
 
 
-
+if [ "$DO_MUSIC_DETECTION" = true ]; then
 
  # Filter speaker segmentation according to speech / non-speech segmentation
 flt1seg=./$datadir/$show.flt1.seg
@@ -145,12 +159,21 @@ $java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.tools.SFilte
 --sFilterClusterName=jingle --fltSegPadding=25 --sFilterMask=$pmsseg --sInputMask=$flt1seg --sOutputMask=$flt2seg $show
 
 
- # Split segments longer than 20s (useful for transcription)
- splseg=./$datadir/$show.spl.seg
- $java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.tools.SSplitSeg --help \
- --sFilterMask=$pmsseg --sFilterClusterName=iS,iT,j --sInputMask=$flt2seg  --sSegMaxLen=2000 --sSegMaxLenModel=2000 \
+# Split segments longer than 20s (useful for transcription)
+splseg=./$datadir/$show.spl.seg
+$java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.tools.SSplitSeg --help \
+--sFilterMask=$pmsseg --sFilterClusterName=iS,iT,j --sInputMask=$flt2seg  --sSegMaxLen=2000 --sSegMaxLenModel=2000 \
 --sOutputMask=$splseg --fInputMask=$features --fInputDesc=audio2sphinx,1:3:2:0:0:0,13,0:0:0 --tInputMask=$sgmm $show
 
+else
+
+# Split segments longer than 20s (useful for transcription)
+splseg=./$datadir/$show.spl.seg
+$java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.tools.SSplitSeg --help \
+--sFilterMask=$pmsseg --sFilterClusterName=iS,iT,j --sInputMask=$adjseg  --sSegMaxLen=2000 --sSegMaxLenModel=2000 \
+--sOutputMask=$splseg --fInputMask=$features --fInputDesc=audio2sphinx,1:3:2:0:0:0,13,0:0:0 --tInputMask=$sgmm $show
+
+fi
 
 
 

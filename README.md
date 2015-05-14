@@ -2,6 +2,22 @@
 
 ## Updates ##
 
+### 2015-05-14 ###
+  * Removed the option to decode using non-online (old style) nnet2 models
+    since the online nnet2 models are more accurate and faster (they don't 
+    the first decoding using triphone models). 
+    
+  * Decoding using online nnet2 models now uses non-online decoder because it
+    is multithreaded. This means that the whole transcription process from
+    start to finish, works in 1.3x realtime when using one thread, and
+    0.8x realtime when using `nthreads=4` on a 8 year old server.
+    
+  * Segments recognized as music and jingle are now reflected as filler
+    segments in the final .trs files
+      
+  * Implemented a framework for automatic punctuation. The punctuation
+    models are not yet publicly available, will be soon.
+
 ### 2015-03-11 ###
   * Language model has been updated on recent text data.
 
@@ -39,16 +55,15 @@ with Kaldi.
 
 The system performs:
   * Speech/non-speech detection, speech segmentation, speaker diarization (using the LIUMSpkDiarization package, http://lium3.univ-lemans.fr/diarization)
-  * Four-pass decoding
-    - With speaker-independent features using MMI-trained acoustic models 
-    - With speaker-adapted features and MMI-based acoustic models
-    - With speaker-adapated features and neural network based acoustic models
-    - Final rescoring with a larger language model
+  * Two-pass decoding
+    - With Kaldi's "online-nnet2" style acoustic models that use i-vectors for speaker adaptation
+    - Rescoring with a larger language model
   * Finally, the recognized words are reconstructed into compound words (i.e., decoding is done using de-compounded words).
     This is the only part that is specific to Estonian.
 
-Trancription is performed in roughly 4.5x realtime on a 5 year old server, using one CPU.
-E.g., transcribing a radio inteview of length 8:23 takes about 37 minutes.
+Trancription is performed in roughly 4.5x realtime on a 8 year old server, using one CPU.
+E.g., transcribing a radio inteview of length 8:23 takes about 37 minutes. This
+can be accelerated to be faster than realtime using multithreaded decoding (see below).
 
 Memory requirements: during most of the work, less than 1 GB of memory is used.
 
@@ -59,7 +74,7 @@ Memory requirements: during most of the work, less than 1 GB of memory is used.
 Server running Linux is needed. The system is tested on Debian 'testing', but any 
 modern distro should do.
 
-Around 8 GB of RAM is required to initialize the speech recognition models for Estonian.
+Around 12 GB of RAM is required to initialize the speech recognition models for Estonian.
 
 If you plan to process many recordings in parallel, we recoemmend to
 turn off hyperthreading in server BIOS. This reduces the number of (virtual)
@@ -129,7 +144,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-03-11.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-05-14.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -169,7 +184,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-03-11.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-05-14.tgz | tar xvz 
 
 Initialize the new models:
 
@@ -192,14 +207,16 @@ For example:
 
     make build/output/intervjuu201306211256.txt
     
-Result (if everything goes fine, after about 36 minutes later (audio file was 8:35 in length, resulting in realtime factor of 4.2)): 
+Result (if everything goes fine, after about 11:20 minutes later (audio file was 8:35 in length, resulting in realtime factor of 1.3)).
+Also demos automatic punctuation (not yet publicly available):
 
     # head -5 build/output/intervjuu201306211256.txt
-    Palgainfoagentuur koostöös CV Online ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu meil on telefonil nüüd Palgainfo Agentuuri juht Kadri Seeder tervist.
-    Kui laiapõhjaline see uuring oli ma saan aru et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
-    Jah me seekord viisime uuringu läbi ka Lätis ja Leedus ja ja see on täpselt samasuguse metoodikaga nii et me saame võrrelda Läti ja Leedu andmeid.
-    Mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad täna vaatasime töötajate tööotsijate uuringusse väga põgusalt sisse.
-    Need tulemused tulevad juuli käigus.
+    
+    Palgainfoagentuur koostöös, et see on laim ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu. Meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder. Tervist.
+    Kui laiapõhjaline see uuring oli, ma saan aru, et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+    Jah, me seekord viisime uuringu läbi ka Lätis ja Leedus ja, ja see on täpselt samasuguse metoodikaga, nii et me saame võrrelda Läti ja Leedu andmed
+    seda küll mitte täna sellepärast et Läti-Leedu tööandjatele ankeete lõpetavad. Täna vaatasime töötajate tööotsijate uuringusse väga põgusalt sisse,
+    need tulemused tulevad juuli käigus
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
@@ -245,30 +262,22 @@ To enable multi-threaded execution, set the variable `nthreads` in `Makefile.opt
 
     nthreads = 4
 
-The speedup is not quite linear. For example, decoding an audio file of 8:35 minutes takes
+The speedup is not quite linear, mostly because speaker diarization is still single-threaded.
+For example, decoding an audio file of 8:35 minutes takes
    
-  * 29 minutes with 1 thread (3.4x realtime)
-  * 11.5 minutes with 4 threads (1.4x realtime)
+  * 11:20 minutes with 1 thread (1.3x realtime)
+  * 7:03 minutes with 4 threads (0.8x realtime)
     
-The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
+~~The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
 server has many cores but relatively little memory (say 16 cores and 16 GB RAM), you can set `nthreads = 5`,
 and use up to 3 parallel decoding processes (e.g., using a queue system, such as Sun Grid Engine).
-This way, the total memory consumption should never exceed 16 GB, and the decoding happens in ~1.5x realtime.
+This way, the total memory consumption should never exceed 16 GB, and the decoding happens in ~1.5x realtime.~~
+
+The above no longer applies. Lattice rescoring doesn't require a lot of memory.
 
 
 ## One-pass decoding using online DNN models with speaker i-vectors ##
 
-Instead of the three-pass decoding strategy, one can alternatively use one-pass decoding
-using "online" DNN models that use i-vectors calculated from each speaker's speech
-as additional input to the DNN, thus providing kind-of unsupervised speaker/channel adaptation. This
-scheme is about two times faster than the default (when using one thread) but introduces
-about 10% relatively more errors: the WER on Estonian radio talk shows when using the default scheme
-is currently 17.7%, when using the one-pass decoding strategy it goes up to 19.3%.
-
-You can activate the scheme by defining `DO_NNET2_ONLINE=yes` variable in `Makefile.options`, or using
-the `--nnet2-online true` option to `speech2text.sh`.
-  
-To decode the same file as above (8:35 minutes), the one-pass scheme requires
-  
-  * 15 minutes with one thread (1.8x realtime)
+This is now the only way to decode. The option to decode with non-online
+nnet models has been removed, since it is much slower and not more accurate.
 

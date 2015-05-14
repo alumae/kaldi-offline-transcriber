@@ -3,15 +3,12 @@ SHELL := /bin/bash
 # Use this file to override various settings
 -include Makefile.options
 
+DO_MUSIC_DETECTION?=yes
+
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
 DO_SPEAKER_ID?=yes
 SID_THRESHOLD?=25
-
-# Do we want to do 1-pass decoding using nnet2 models instead of 3-pass decoding?
-# Should be about 3 times faster with 10% more errors
-DO_NNET2_ONLINE?=yes
-
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
@@ -57,11 +54,7 @@ endif
 where-am-i = $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(shell dirname $(call where-am-i))
 
-ifeq ($(DO_NNET2_ONLINE),yes)
-  FINAL_PASS=nnet2_online_ivector_pruned_rescored_main
-else
-  FINAL_PASS=nnet5c1_pruned_rescored_main
-endif
+FINAL_PASS=nnet2_online_ivector_pruned_rescored_main
 
 LD_LIBRARY_PATH=$(KALDI_ROOT)/tools/openfst/lib
 
@@ -178,7 +171,8 @@ build/diarization/%/show.seg: build/audio/base/%.wav
 	rm -rf `dirname $@`
 	mkdir -p `dirname $@`
 	echo "$* 1 0 1000000000 U U U 1" >  `dirname $@`/show.uem.seg;
-	./scripts/diarization.sh $^ `dirname $@`/show.uem.seg;
+	if [ $(DO_MUSIC_DETECTION) = yes ]; then diarization_opts="-m"; fi; \
+	./scripts/diarization.sh $$diarization_opts $^ `dirname $@`/show.uem.seg
 
 
 build/audio/segmented/%: build/diarization/%/show.seg
@@ -220,53 +214,25 @@ build/trans/%/spk2utt: build/trans/%/utt2spk
 # MFCC calculation
 build/trans/%/mfcc: build/trans/%/spk2utt
 	rm -rf $@
-	steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --cmd "$$train_cmd" --nj $(njobs) \
+	rm -f build/trans/$*/cmvn.scp
+	steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --cmd "$$train_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 
 
-
-	
-# First, decode using tri3b_mmi (LDA+MLLT+SAT+MMI trained triphones)
-build/trans/%/tri3b_mmi_pruned/decode/log: build/fst/tri3b/graph_prunedlm build/fst/tri3b/final.mdl build/fst/tri3b_mmi/final.mdl build/trans/%/mfcc
-	rm -rf build/trans/$*/tri3b_mmi_pruned
-	mkdir -p build/trans/$*/tri3b_mmi_pruned
-	(cd build/trans/$*/tri3b_mmi_pruned; for f in ../../../fst/tri3b_mmi/*; do ln -s $$f; done)
-	steps/decode_fmllr.sh --num-threads $(nthreads) --config conf/decode.conf --skip-scoring true --nj $(njobs) --cmd "$$decode_cmd" \
-	  --alignment-model build/fst/tri3b/final.alimdl --adapt-model build/fst/tri3b/final.mdl \
-		build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
-	(cd build/trans/$*/tri3b_mmi_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
-
-# Now, decode using nnet AM, using speaker transforms from tri3b_mmi
-build/trans/%/nnet5c1_pruned/decode/log: build/trans/%/tri3b_mmi_pruned/decode/log build/fst/nnet5c1/final.mdl
-	rm -rf build/trans/$*/nnet5c1_pruned
-	mkdir -p build/trans/$*/nnet5c1_pruned
-	(cd build/trans/$*/nnet5c1_pruned; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	steps/nnet2/decode.sh --num-threads $(nthreads) --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
-    --transform-dir build/trans/$*/tri3b_mmi_pruned/decode \
-     build/fst/tri3b/graph_prunedlm build/trans/$* `dirname $@`
-	(cd build/trans/$*/nnet5c1_pruned; ln -s ../../../fst/tri3b/graph_prunedlm graph)
-
-# Rescore with a larger language model
-build/trans/%/nnet5c1_pruned_rescored_main/decode/log: build/trans/%/nnet5c1_pruned/decode/log build/fst/data/largelm
-	rm -rf build/trans/$*/nnet5c1_pruned_rescored_main
-	mkdir -p build/trans/$*/nnet5c1_pruned_rescored_main
-	(cd build/trans/$*/nnet5c1_pruned_rescored_main; for f in ../../../fst/nnet5c1/*; do ln -s $$f; done)
-	steps/lmrescore_const_arpa.sh \
-	  build/fst/data/prunedlm build/fst/data/largelm \
-	  build/trans/$* \
-	  build/trans/$*/nnet5c1_pruned/decode build/trans/$*/nnet5c1_pruned_rescored_main/decode || exit 1;
-	cp -r --preserve=links build/trans/$*/nnet5c1_pruned/graph build/trans/$*/nnet5c1_pruned_rescored_main/	
-
-
-### Alternatively, do 1-pass decoding using nnet2 online models
+### Do 1-pass decoding using nnet2 online models
+### We use  but use steps/nnet2/decode.sh since it is multithreaded
 build/trans/%/nnet2_online_ivector_pruned/decode/log: build/fst/nnet2_online_ivector/final.mdl build/fst/nnet2_online_ivector/graph_prunedlm build/trans/%/spk2utt build/trans/%/mfcc
 	rm -rf build/trans/$*/nnet2_online_ivector_pruned
 	mkdir -p build/trans/$*/nnet2_online_ivector_pruned
+	steps/online/nnet2/extract_ivectors_online.sh --cmd "$$decode_cmd" --nj $(njobs) \
+        build/trans/$* build/fst/nnet2_online_ivector/ivector_extractor build/trans/$*/nnet2_online/ivectors
 	(cd build/trans/$*/nnet2_online_ivector_pruned; for f in ../../../fst/nnet2_online_ivector/*; do ln -s $$f; done)
-	steps/online/nnet2/decode.sh --config conf/decode.conf --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+	steps/nnet2/decode.sh --num-threads $(nthreads) --config conf/decode.conf --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+	    --online-ivector-dir build/trans/$*/nnet2_online/ivectors \
       build/fst/nnet2_online_ivector/graph_prunedlm build/trans/$* `dirname $@` || exit 1;
 	(cd build/trans/$*/nnet2_online_ivector_pruned; ln -s ../../../fst/nnet2_online_ivector/graph_prunedlm graph)
+
 
 # Rescore nnet2 lattices with a larger language model
 build/trans/%/nnet2_online_ivector_pruned_rescored_main/decode/log: build/trans/%/nnet2_online_ivector_pruned/decode/log build/fst/data/largelm
@@ -318,11 +284,21 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat $^ | python scripts/segmented-ctm-to-hyp.py > $@
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt > $@
+ifeq "yes" "$(DO_MUSIC_DETECTION)"
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt build/diarization/%/show.seg
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  --pms build/diarization/$*/show.pms.seg > $@
+else
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt 
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  > $@
+endif	
+else
+ifeq "yes" "$(DO_MUSIC_DETECTION)"
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt build/diarization/%/show.seg
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --pms build/diarization/$*/show.pms.seg > $@
 else
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
 	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $*  > $@
+endif
 endif
 
 %.sbv: %.hyp
@@ -377,6 +353,7 @@ build/sid/%/spk2utt : build/trans/%/spk2utt
 build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt
 	rm -rf $@
 	rm -f build/sid/$*/vad.scp
+	rm -f build/sid/$*/cmvn.scp
 	steps/make_mfcc.sh --mfcc-config conf/mfcc_sid.conf --cmd "$$train_cmd" --nj $(njobs) \
 		build/sid/$* build/sid/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/sid/$* build/sid/$*/exp/make_mfcc $@ || exit 1
@@ -385,6 +362,7 @@ build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt
 
 # i-vectors for each speaker in our audio file
 build/sid/%/ivectors: build/sid/%/mfcc
+	rm -rf build/sid/$*/ivectors
 	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) \
 		$(THIS_DIR)/kaldi-data/extractor_2048_top500 build/sid/$* $@
 

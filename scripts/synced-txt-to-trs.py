@@ -28,22 +28,46 @@ def print_speakers(speakers, speaker_table):
   print '<Episode>'
         
         
+
+        
 def print_sections(sections):
   for i in xrange(len(sections)):
-    turns = sections[i]
+    section_type, turns = sections[i]
     starttime = turns[0][1][0][0]
     endtime = turns[-1][1][-1][1]
-    print '<Section type="report" startTime="%s" endTime="%s"' % (starttime, endtime),
-    print '>'
-    for (speaker, turn) in turns:
-      print '<Turn speaker="%s" startTime="%s" endTime="%s">' % (speaker, turn[0][0], turn[-1][1])
-      for line in turn:
-        #print line[2]
-        print '<Sync time="%s"/>' % line[0]
-        content = line[2]
-        print " ".join(content)
-      print '</Turn>' 
-    print '</Section>'
+    if i < len(sections) - 1 and endtime > sections[i+1][1][0][1][0][0]:
+      # do not allow endtime to overlap
+      print >> sys.stderr, "Adjusting section end from %f to to %f" % (turns[-1][1][-1][1], sections[i+1][1][0][1][0][0])
+      endtime = sections[i+1][1][0][1][0][0]
+    
+    if section_type == "report":
+      print '<Section type="%s" startTime="%s" endTime="%s"' % (section_type, starttime, endtime),
+      print '>'
+      for (speaker, turn) in turns:
+        turn_endtime =  turn[-1][1]
+        if turn_endtime > endtime:
+          turn_endtime = endtime
+        print '<Turn speaker="%s" startTime="%s" endTime="%s">' % (speaker, turn[0][0], turn_endtime)
+        for line in turn:
+          #print line[2]
+          print '<Sync time="%s"/>' % line[0]
+          content = line[2]
+          print " ".join(content)
+        print '</Turn>' 
+      print '</Section>'
+    elif section_type in ["filler", "nontrans"]:
+      print '<Section type="%s" startTime="%s" endTime="%s"' % (section_type, starttime, endtime),
+      print '>'
+      
+      for _, turn in turns:
+        turn_endtime =  turn[-1][1]
+        if turn_endtime > endtime:
+          turn_endtime = endtime
+        print '<Turn startTime="%s" endTime="%s">' % (turn[0][0], endtime)
+        for event in turn:
+          print '<Event desc="%s" type="%s" extent="instantaneous"/>' % (event[2], event[3])
+        print '</Turn>' 
+      print '</Section>'
 
 def titlecase(s):
     return re.sub(re.compile(r"[\w]+('[\w]+)?", flags=re.UNICODE),
@@ -56,6 +80,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Convert hyp to trs file')
   parser.add_argument('-s', '--sid', help='Speaker ID file, with lines in format <speaker_code> <speaker full name>')
   parser.add_argument('--fid', default="unknown", help="File id to be used in trs header")
+  parser.add_argument('--pms', help="File with speech/non-speech segmentation")
   args = parser.parse_args()
   
 
@@ -69,7 +94,21 @@ if __name__ == '__main__':
       fields = l.split(None, 1)
       speaker_realnames[fields[0]] = fields[1].strip()
   
+  # list of triples (start, length, speech/music/jingle)
+  pms_seg = []
+  if args.pms:
+    print >> sys.stderr, "Reading speech/music/jingle segmentation from %s" % args.pms
+    for l in open(args.pms):
+      fields = l.split()
+      pms_seg.append((float(fields[2])/100, float(fields[3])/100, fields[7]))
+  
   sections = []
+  
+  for seg in pms_seg:
+    if seg[2] in ['music', 'jingle']:
+      turns = [("foo", [(seg[0], seg[0] + seg[1], seg[2], "noise")])]
+      sections.append(("filler", turns))
+  
   last_speaker_id = ""
   last_end_time = -1.0
   
@@ -95,7 +134,7 @@ if __name__ == '__main__':
         
         if abs(start_time != last_end_time) > 0.001:
           turns = []
-          sections.append(turns)
+          sections.append(("report", turns))
           last_speaker_id = ""
         
         if speaker_id != last_speaker_id:
@@ -114,6 +153,9 @@ if __name__ == '__main__':
           content.append(word)
         do_uppercase = word.endswith(".")
           
+  
+  sections.sort(key=lambda turns: turns[1][0][1][0][0])  
+  
      
   print_header(args.fid)
   print_speakers(speakers, speaker_table)        
