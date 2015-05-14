@@ -74,7 +74,12 @@ Memory requirements: during most of the work, less than 1 GB of memory is used.
 Server running Linux is needed. The system is tested on Debian 'testing', but any 
 modern distro should do.
 
-Around 12 GB of RAM is required to initialize the speech recognition models for Estonian.
+#### Memory requirements ####
+  
+  * Around 8GB of RAM is required to initialize the speech recognition models (`make .init`)
+  * Around 2GB of RAM is required for actual transcription, once the models have been initialized
+  
+#### Remarks ####
 
 If you plan to process many recordings in parallel, we recoemmend to
 turn off hyperthreading in server BIOS. This reduces the number of (virtual)
