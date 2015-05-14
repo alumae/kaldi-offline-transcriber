@@ -5,15 +5,15 @@
 ### 2015-05-14 ###
   * Removed the option to decode using non-online (old style) nnet2 models
     since the online nnet2 models are more accurate and faster (they don't 
-    the first decoding using triphone models). 
+    require first pass decoding using triphone models). 
     
   * Decoding using online nnet2 models now uses non-online decoder because it
-    is multithreaded. This means that the whole transcription process from
-    start to finish, works in 1.3x realtime when using one thread, and
+    allows multithreaded execution. This means that the whole transcription process from
+    start to finish works in 1.3x realtime when using one thread, and in
     0.8x realtime when using `nthreads=4` on a 8 year old server.
     
   * Segments recognized as music and jingle are now reflected as filler
-    segments in the final .trs files
+    segments in the final .trs files (probably not important for most users).
       
   * Implemented a framework for automatic punctuation. The punctuation
     models are not yet publicly available, will be soon.
@@ -61,8 +61,8 @@ The system performs:
   * Finally, the recognized words are reconstructed into compound words (i.e., decoding is done using de-compounded words).
     This is the only part that is specific to Estonian.
 
-Trancription is performed in roughly 4.5x realtime on a 8 year old server, using one CPU.
-E.g., transcribing a radio inteview of length 8:23 takes about 37 minutes. This
+Trancription is performed in roughly 1.3x realtime on a 8 year old server, using one CPU.
+E.g., transcribing a radio inteview of length 8:23 takes about 11:20 minutes. This
 can be accelerated to be faster than realtime using multithreaded decoding (see below).
 
 Memory requirements: during most of the work, less than 1 GB of memory is used.
@@ -200,7 +200,7 @@ are supported. E.g:
     wget http://media.kuku.ee/intervjuu/intervjuu201306211256.mp3
     cd ..
 
-Tp run the transcription pipeline, execute `make build/output/<filename>.txt` where `filename` matches the name of  the audio file
+To run the transcription pipeline, execute `make build/output/<filename>.txt` where `filename` matches the name of  the audio file
 in `src-audio` (without the extension). This command runs all the necessary commands to generate the transcription file.
 
 For example:
