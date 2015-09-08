@@ -293,7 +293,7 @@ build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).sy
 endif	
 else
 ifeq "yes" "$(DO_MUSIC_DETECTION)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt build/diarization/%/show.seg
+build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/diarization/%/show.seg
 	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --pms build/diarization/$*/show.pms.seg > $@
 else
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
