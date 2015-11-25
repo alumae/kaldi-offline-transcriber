@@ -134,7 +134,7 @@ build/audio/base/%.wav: src-audio/%.wav
 
 build/audio/base/%.wav: src-audio/%.mp3
 	mkdir -p `dirname $@`
-	sox $^ -c 1 build/audio/base/$*.wav rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k	
 
 build/audio/base/%.wav: src-audio/%.ogg
 	mkdir -p `dirname $@`
