@@ -45,7 +45,7 @@
 
 ## Introduction ##
 
-This is an offline transcription system for Estonian based on Kaldi (http://kaldi.sourceforge.net).
+This is an offline transcription system for Estonian based on Kaldi (https://github.com/kaldi-asr/kaldi).
 
 The system is targetted to users who have no speech research background
 but who want to transcribe long audio recordings using automatic speech recognition.
@@ -81,7 +81,7 @@ modern distro should do.
   
 #### Remarks ####
 
-If you plan to process many recordings in parallel, we recoemmend to
+If you plan to process many recordings in parallel, we recommend to
 turn off hyperthreading in server BIOS. This reduces the number of (virtual)
 cores by half, but should make processing faster, if you won't run more than
 `N` processes in parallel, where `N` is the number of physical cores.
@@ -93,6 +93,7 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
 
   * C/C++ compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
   * Perl
+  * java-jre
 
 ### Audio processing tools ###
 
@@ -100,24 +101,32 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
   * sox
 
 ## Installation ##
-  
+
+### Atlas
+
+Install the ATLAS matrix algebra library. On Ubuntu/Debian (as root):
+
+    apt-get install libatlas-dev
+      
 ### Kaldi ###
 
-IMPORTANT: The system works agains Kaldi trunk as of 2014-10-15. The system
+IMPORTANT: The system works agains Kaldi trunk as of 2014-11-15. The system
 may not work with Kaldi revisions that are a lot (months) older or newer than that.
 
+Update: also tested against Kaldi as of 2015-11-15 -- everything works OK.
+
+
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
-http://kaldi.sourceforge.net/install.html. Install the `kaldi-trunk` version.
+http://kaldi-asr.org/doc/install.html. Install the `kaldi-trunk` version.
 
 You should probably execute something along the following lines (but refer to the official
 install guide for details):
 
     cd ~/tools
-    svn co svn://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
+    git clone git@github.com:kaldi-asr/kaldi.git kaldi-trunk
     cd kaldi-trunk
     cd tools
     make -j 4
-    ./install_atlas.sh
 
     cd ../src
     ./configure
@@ -138,6 +147,10 @@ To install `pyfst` and make it use the Kaldi's OpenFst libraries, install
 it like that (as root):
 
     CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install pyfst
+    
+If you have OpenFst installed as a system-wide library, you don't need the flags, i.e., just execute (as root):
+
+    pip install pyfst
     
 ### This package ###
 
