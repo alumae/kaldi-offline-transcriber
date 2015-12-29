@@ -117,7 +117,7 @@ build/fst/nnet2_online_ivector/final.mdl:
 	rm -rf `dirname $@`
 	mkdir -p `dirname $@`
 	cp -r $(THIS_DIR)/kaldi-data/nnet2_online_ivector/* `dirname $@`
-	perl -i -npe 's/=.*nnet2_online_ivector([_-\w]*)online/=build\/fst\/nnet2_online_ivector/' build/fst/nnet2_online_ivector/conf/*.conf
+	perl -i -npe 's/=.*online\//=build\/fst\/nnet2_online_ivector\//' build/fst/nnet2_online_ivector/conf/*.conf
 
 build/fst/%/final.mdl:
 	rm -rf `dirname $@`
