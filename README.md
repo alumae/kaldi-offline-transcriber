@@ -2,6 +2,10 @@
 
 ## Updates ##
 
+### 2015-12-29 ###
+  * Updated acoustic and language models (see below on how to update). No need
+    to update Kaldi. Recognition errors reduced by more than 10%.
+
 ### 2015-05-14 ###
   * Removed the option to decode using non-online (old style) nnet2 models
     since the online nnet2 models are more accurate and faster (they don't 
@@ -162,7 +166,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-05-14.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-12-29.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -202,7 +206,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-05-14.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-12-29.tgz | tar xvz 
 
 Initialize the new models:
 
