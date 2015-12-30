@@ -4,7 +4,7 @@
 
 ### 2015-12-29 ###
   * Updated acoustic and language models (see below on how to update). No need
-    to update Kaldi. Recognition errors reduced by more than 10%.
+    to update Kaldi. Recognition errors reduced by more than 10%. Word error rate on broadcast conversations is about 14%.
 
 ### 2015-05-14 ###
   * Removed the option to decode using non-online (old style) nnet2 models
