@@ -1,9 +1,11 @@
+#! /usr/bin/env python
 '''
 Created on Oct 15, 2010
 
 @author: tanel
 '''
 
+from __future__ import print_function
 import sys
 import re
 
@@ -33,10 +35,10 @@ if __name__ == '__main__':
 
 
       if segment_id != last_segment_id:
-        print file_id, "1", float(ss[2]) + start, 0, "<start=%f,end=%f,speaker=%s>" % (start, end, speaker_id), "1"
+        print(file_id, "1", float(ss[2]) + start, 0, "<start=%f,end=%f,speaker=%s>" % (start, end, speaker_id), "1")
 
-      print file_id, "1", float(ss[2]) + start, ss[3], word, score
+      print(file_id, "1", float(ss[2]) + start, ss[3], word, score)
       last_segment_id = segment_id
     else:
-      print >> sys.stderr, "Cannot parse: ", ss[0]
+      print("Cannot parse: ", ss[0], file=sys.stderr)
     

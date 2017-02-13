@@ -1,5 +1,7 @@
-import sys
+#! /usr/bin/env python
 
+from __future__ import print_function
+import sys
 
 sentences = {}
 
@@ -11,4 +13,4 @@ for l in sys.stdin:
     sentences[sent_id] = sentences.get(sent_id, []) + [word]
 
 for sent_id in sorted(sentences):
-  print "%s (%s)" % (" ".join(sentences[sent_id]), sent_id)
+  print("%s (%s)" % (" ".join(sentences[sent_id]), sent_id))

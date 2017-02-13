@@ -1,10 +1,10 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 '''
 Created on Apr 4, 2012
 
 @author: tanel
 '''
-
+from __future__ import print_function
 import sys
 import datetime
 import re
@@ -20,9 +20,9 @@ for l in sys.stdin:
         speaker =m.group(5)
         datetime1 = datetime.datetime.utcfromtimestamp(starttime)
         datetime2 = datetime.datetime.utcfromtimestamp(endtime)
-        print "%s,%s" % (datetime1.strftime('%H:%M:%S.%f'), datetime2.strftime('%H:%M:%S.%f'))
-        print content
-        print 
+        print("%s,%s" % (datetime1.strftime('%H:%M:%S.%f'), datetime2.strftime('%H:%M:%S.%f')))
+        print(content)
+        print()
         
     else:
         raise Exception("cannot process line: " + l)

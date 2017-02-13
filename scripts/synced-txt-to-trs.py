@@ -1,5 +1,6 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
+from __future__ import print_function
 import sys
 import re
 import argparse
@@ -8,66 +9,64 @@ import codecs
 
 def print_header(filename):
   now = datetime.datetime.now()
-  print '<?xml version="1.0" encoding="UTF-8"?>'
-  print '<!DOCTYPE Trans SYSTEM "trans-14.dtd">'
-  print '<Trans scribe="est-speech2txt" audio_filename="'+ filename+ '" version="1" version_date="' + now.strftime("%y%m%d") + '">'
+  print('<?xml version="1.0" encoding="UTF-8"?>')
+  print('<!DOCTYPE Trans SYSTEM "trans-14.dtd">')
+  print('<Trans scribe="est-speech2txt" audio_filename="'+ filename+ '" version="1" version_date="' + now.strftime("%y%m%d") + '">')
     
     
 def print_footer():
-  print '</Episode>'
-  print '</Trans>'
+  print('</Episode>')
+  print('</Trans>')
     
 def print_speakers(speakers, speaker_table):
-  print "<Speakers>"
+  print("<Speakers>")
   i = 1
   for v in sorted(speakers.values()):
     speaker_name = speaker_table.get(v)
-    print '<Speaker id="%s" name="%s" check="no" dialect="native" accent="" scope="local" type="male"/>' % (v, speaker_name)
+    print('<Speaker id="%s" name="%s" check="no" dialect="native" accent="" scope="local" type="male"/>' % (v, speaker_name))
     i += 1
-  print "</Speakers>"
-  print '<Episode>'
-        
+  print("</Speakers>")
+  print('<Episode>')
         
 
-        
 def print_sections(sections):
-  for i in xrange(len(sections)):
+  for i in range(len(sections)):
     section_type, turns = sections[i]
     starttime = turns[0][1][0][0]
     endtime = turns[-1][1][-1][1]
     if i < len(sections) - 1 and endtime > sections[i+1][1][0][1][0][0]:
       # do not allow endtime to overlap
-      print >> sys.stderr, "Adjusting section end from %f to to %f" % (turns[-1][1][-1][1], sections[i+1][1][0][1][0][0])
+      print("Adjusting section end from %f to to %f" % (turns[-1][1][-1][1], sections[i+1][1][0][1][0][0]), file=sys.stderr)
       endtime = sections[i+1][1][0][1][0][0]
     
     if section_type == "report":
-      print '<Section type="%s" startTime="%s" endTime="%s"' % (section_type, starttime, endtime),
-      print '>'
+      print('<Section type="%s" startTime="%s" endTime="%s"' % (section_type, starttime, endtime), end='')
+      print('>')
       for (speaker, turn) in turns:
         turn_endtime =  turn[-1][1]
         if turn_endtime > endtime:
           turn_endtime = endtime
-        print '<Turn speaker="%s" startTime="%s" endTime="%s">' % (speaker, turn[0][0], turn_endtime)
+        print('<Turn speaker="%s" startTime="%s" endTime="%s">' % (speaker, turn[0][0], turn_endtime))
         for line in turn:
           #print line[2]
-          print '<Sync time="%s"/>' % line[0]
+          print('<Sync time="%s"/>' % line[0])
           content = line[2]
-          print " ".join(content)
-        print '</Turn>' 
-      print '</Section>'
+          print(" ".join(content))
+        print('</Turn>')
+      print('</Section>')
     elif section_type in ["filler", "nontrans"]:
-      print '<Section type="%s" startTime="%s" endTime="%s"' % (section_type, starttime, endtime),
-      print '>'
+      print('<Section type="%s" startTime="%s" endTime="%s"' % (section_type, starttime, endtime), end='')
+      print('>')
       
       for _, turn in turns:
         turn_endtime =  turn[-1][1]
         if turn_endtime > endtime:
           turn_endtime = endtime
-        print '<Turn startTime="%s" endTime="%s">' % (turn[0][0], endtime)
+        print('<Turn startTime="%s" endTime="%s">' % (turn[0][0], endtime))
         for event in turn:
-          print '<Event desc="%s" type="%s" extent="instantaneous"/>' % (event[2], event[3])
-        print '</Turn>' 
-      print '</Section>'
+          print('<Event desc="%s" type="%s" extent="instantaneous"/>' % (event[2], event[3]))
+        print('</Turn>')
+      print('</Section>')
 
 def titlecase(s):
     return re.sub(re.compile(r"[\w]+('[\w]+)?", flags=re.UNICODE),
@@ -84,12 +83,9 @@ if __name__ == '__main__':
   args = parser.parse_args()
   
 
-  sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
-  sys.stdin = codecs.getreader('utf-8')(sys.stdin)
-  
   speaker_realnames = {}
   if args.sid:
-    print >> sys.stderr, "Using %s for speaker ID" % args.sid
+    print("Using %s for speaker ID" % args.sid, file=sys.stderr)
     for l in codecs.open(args.sid, "r", "utf-8"):
       fields = l.split(None, 1)
       speaker_realnames[fields[0]] = fields[1].strip()
@@ -97,7 +93,7 @@ if __name__ == '__main__':
   # list of triples (start, length, speech/music/jingle)
   pms_seg = []
   if args.pms:
-    print >> sys.stderr, "Reading speech/music/jingle segmentation from %s" % args.pms
+    print("Reading speech/music/jingle segmentation from %s" % args.pms, file=sys.stderr)
     for l in open(args.pms):
       fields = l.split()
       pms_seg.append((float(fields[2])/100, float(fields[3])/100, fields[7]))
@@ -118,7 +114,9 @@ if __name__ == '__main__':
   
   do_uppercase = True
   
-  for l in sys.stdin:
+  while 1:
+    l = sys.stdin.readline()
+    if not l: break
     words = l.split()
     for word in words:
       if word.startswith("<") and "start=" in word:
@@ -126,7 +124,7 @@ if __name__ == '__main__':
         end_time = float(re.match(r".*end=(\d+(\.\d+)?)", word).group(1))
         speaker_id = re.match(r".*speaker=(\w+)", word).group(1)
 
-        if not speakers.has_key(speaker_id):
+        if not (speaker_id in speakers):
           speaker_code = "S%d" % (num_speakers + 1)
           speakers[speaker_id] = speaker_code
           speaker_table[speaker_code] = speaker_realnames.get(speaker_id, "K%d" % (num_speakers + 1))

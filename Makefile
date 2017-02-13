@@ -22,7 +22,7 @@ njobs ?= 1
 # How many threads to use in each process
 nthreads ?= 1
 
-PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/online2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/lmbin:$(PATH):$(KALDI_ROOT)/src/ivectorbin:$(PATH)
+PATH := utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/online2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/lmbin:$(PATH):$(KALDI_ROOT)/src/ivectorbin:$(KALDI_ROOT)/src/nnet3bin:$(PATH)
 
 export train_cmd=run.pl
 export decode_cmd=run.pl
@@ -45,7 +45,7 @@ LM_SCALE?=17
 DO_PUNCTUATION?=no
 
 ifeq "yes" "$(DO_PUNCTUATION)"
-  PUNCTUATE_SYNC_TXT_CMD?=(cd ~/tools/punctuator/src; python wrapper.py)
+  PUNCTUATE_SYNC_TXT_CMD?=(cd ~/tools/punctuator/src; python2.7 wrapper.py)
   DOT_PUNCTUATED=.punctuated
 endif
 
@@ -54,12 +54,14 @@ endif
 where-am-i = $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(shell dirname $(call where-am-i))
 
-FINAL_PASS=nnet2_online_ivector_pruned_rescored_main
+FINAL_PASS=chain_tdnn_bi_online_pruned_rescored_main
 
 LD_LIBRARY_PATH=$(KALDI_ROOT)/tools/openfst/lib
 
 .SECONDARY:
 .DELETE_ON_ERROR:
+
+PYTHONIOENCODING="utf-8"
 
 export
 
@@ -73,7 +75,7 @@ export
 	ln -s $(KALDI_ROOT)/egs/sre08/v1/sid
 	mkdir -p src-audio
 
-.lang: build/fst/data/prunedlm build/fst/nnet2_online_ivector/graph_prunedlm build/fst/data/largelm build/fst/data/compounderlm
+.lang: build/fst/data/prunedlm build/fst/chain_tdnn_bi_online/graph_prunedlm build/fst/data/largelm build/fst/data/compounderlm
 
 
 # Convert dict and LM to FST format
@@ -89,10 +91,8 @@ build/fst/data/dict build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB)
 		grep -v '<s> <s>' | \
 		grep -v '</s> <s>' | \
 		grep -v '</s> </s>' | \
-		arpa2fst - | fstprint | \
-		utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=build/fst/data/prunedlm/words.txt \
-			--osymbols=build/fst/data/prunedlm/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-		 fstrmepsilon > build/fst/data/prunedlm/G.fst
+		arpa2fst --disambig-symbol=#0 \
+		  --read-symbol-table=build/fst/data/prunedlm/words.txt  -  $@/G.fst
 	fstisstochastic build/fst/data/prunedlm/G.fst || echo "Warning: LM not stochastic"
 
 build/fst/data/largelm: build/fst/data/prunedlm $(LM)
@@ -104,29 +104,24 @@ build/fst/data/largelm: build/fst/data/prunedlm $(LM)
 build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 	rm -rf $@
 	mkdir -p $@
-	cat $(VOCAB) | perl -npe 's/(\(\d\))?\s.+//' | uniq | python scripts/make-compounder-symbols.py > $@/words.txt
+	cat $(VOCAB) | perl -npe 's/(\(\d\))?\s.+//' | uniq | ./scripts/make-compounder-symbols.py > $@/words.txt
 	zcat $(COMPOUNDER_LM) | \
 		grep -v '<s> <s>' | \
 		grep -v '</s> <s>' | \
 		grep -v '</s> </s>' | \
 		arpa2fst  - | fstprint | \
 		utils/s2eps.pl | fstcompile --isymbols=$@/words.txt --osymbols=$@/words.txt > $@/G.fst 
-
-# override some paths in nnet2 conf files
-build/fst/nnet2_online_ivector/final.mdl:
+		
+build/fst/chain_tdnn_bi_online/final.mdl:
 	rm -rf `dirname $@`
 	mkdir -p `dirname $@`
-	cp -r $(THIS_DIR)/kaldi-data/nnet2_online_ivector/* `dirname $@`
-	perl -i -npe 's/=.*online\//=build\/fst\/nnet2_online_ivector\//' build/fst/nnet2_online_ivector/conf/*.conf
+	cp -r $(THIS_DIR)/kaldi-data/chain_tdnn_bi_online/* `dirname $@`
+	perl -i -npe 's/=.*online\//=build\/fst\/chain_tdnn_bi_online\//' build/fst/chain_tdnn_bi_online/conf/*.conf
 
-build/fst/%/final.mdl:
-	rm -rf `dirname $@`
-	mkdir -p `dirname $@`
-	cp -r $(THIS_DIR)/kaldi-data/$*/* `dirname $@`
-	
+
 build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 	rm -rf $@
-	utils/mkgraph.sh build/fst/data/prunedlm build/fst/$* $@
+	utils/mkgraph.sh --self-loop-scale 1.0  build/fst/data/prunedlm build/fst/$* $@
 
 build/audio/base/%.wav: src-audio/%.wav
 	mkdir -p `dirname $@`
@@ -220,30 +215,30 @@ build/trans/%/mfcc: build/trans/%/spk2utt
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 
 
-### Do 1-pass decoding using nnet2 online models
-### We use  but use steps/nnet2/decode.sh since it is multithreaded
-build/trans/%/nnet2_online_ivector_pruned/decode/log: build/fst/nnet2_online_ivector/final.mdl build/fst/nnet2_online_ivector/graph_prunedlm build/trans/%/spk2utt build/trans/%/mfcc
-	rm -rf build/trans/$*/nnet2_online_ivector_pruned
-	mkdir -p build/trans/$*/nnet2_online_ivector_pruned
+### Do 1-pass decoding using chain online models
+build/trans/%/chain_tdnn_bi_online_pruned/decode/log: build/fst/chain_tdnn_bi_online/final.mdl build/fst/chain_tdnn_bi_online/graph_prunedlm build/trans/%/spk2utt build/trans/%/mfcc
+	rm -rf build/trans/$*/chain_tdnn_bi_online_pruned
+	mkdir -p build/trans/$*/chain_tdnn_bi_online_pruned
 	steps/online/nnet2/extract_ivectors_online.sh --cmd "$$decode_cmd" --nj $(njobs) \
-        build/trans/$* build/fst/nnet2_online_ivector/ivector_extractor build/trans/$*/nnet2_online/ivectors
-	(cd build/trans/$*/nnet2_online_ivector_pruned; for f in ../../../fst/nnet2_online_ivector/*; do ln -s $$f; done)
-	steps/nnet2/decode.sh --num-threads $(nthreads) --config conf/decode.conf --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+        build/trans/$* build/fst/chain_tdnn_bi_online/ivector_extractor build/trans/$*/nnet2_online/ivectors
+	(cd build/trans/$*/chain_tdnn_bi_online_pruned; for f in ../../../fst/chain_tdnn_bi_online/*; do ln -s $$f; done)
+	steps/nnet3/decode.sh --num-threads $(nthreads) --acwt 1.0  --post-decode-acwt 10.0 \
+	    --config conf/decode.conf --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
 	    --online-ivector-dir build/trans/$*/nnet2_online/ivectors \
-      build/fst/nnet2_online_ivector/graph_prunedlm build/trans/$* `dirname $@` || exit 1;
-	(cd build/trans/$*/nnet2_online_ivector_pruned; ln -s ../../../fst/nnet2_online_ivector/graph_prunedlm graph)
+	    --skip-diagnostics true \
+      build/fst/chain_tdnn_bi_online/graph_prunedlm build/trans/$* `dirname $@` || exit 1;
+	(cd build/trans/$*/chain_tdnn_bi_online_pruned; ln -s ../../../fst/chain_tdnn_bi_online/graph_prunedlm graph)
 
-
-# Rescore nnet2 lattices with a larger language model
-build/trans/%/nnet2_online_ivector_pruned_rescored_main/decode/log: build/trans/%/nnet2_online_ivector_pruned/decode/log build/fst/data/largelm
-	rm -rf build/trans/$*/nnet2_online_ivector_pruned_rescored_main
-	mkdir -p build/trans/$*/nnet2_online_ivector_pruned_rescored_main
-	(cd build/trans/$*/nnet2_online_ivector_pruned_rescored_main; for f in ../../../fst/nnet2_online_ivector/*; do ln -s $$f; done)
+# Rescore lattices with a larger language model
+build/trans/%/chain_tdnn_bi_online_pruned_rescored_main/decode/log: build/trans/%/chain_tdnn_bi_online_pruned/decode/log build/fst/data/largelm
+	rm -rf build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main
+	mkdir -p build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main
+	(cd build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main; for f in ../../../fst/chain_tdnn_bi_online/*; do ln -s $$f; done)
 	steps/lmrescore_const_arpa.sh \
 	  build/fst/data/prunedlm build/fst/data/largelm \
 	  build/trans/$* \
-	  build/trans/$*/nnet2_online_ivector_pruned/decode build/trans/$*/nnet2_online_ivector_pruned_rescored_main/decode || exit 1;
-	cp -r --preserve=links build/trans/$*/nnet2_online_ivector_pruned/graph build/trans/$*/nnet2_online_ivector_pruned_rescored_main/	
+	  build/trans/$*/chain_tdnn_bi_online_pruned/decode build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main/decode || exit 1;
+	cp -r --preserve=links build/trans/$*/chain_tdnn_bi_online_pruned/graph build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main/	
 
 
 %/decode/.ctm: %/decode/log
@@ -262,10 +257,10 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' > $@
 
 %.synced.ctm: %.segmented.ctm
-	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
+	cat $^ | ./scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 
 %.with-compounds.synced.ctm: %.segmented.with-compounds.ctm
-	cat $^ | python scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
+	cat $^ | ./scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 	
 %.ctm: %.synced.ctm
 	cat $^ | grep -v "<" > $@
@@ -281,28 +276,28 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 
 
 %.hyp: %.segmented.ctm
-	cat $^ | python scripts/segmented-ctm-to-hyp.py > $@
+	cat $^ | ./scripts/segmented-ctm-to-hyp.py > $@
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
 ifeq "yes" "$(DO_MUSIC_DETECTION)"
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt build/diarization/%/show.seg
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  --pms build/diarization/$*/show.pms.seg > $@
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  --pms build/diarization/$*/show.pms.seg > $@
 else
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt 
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  > $@
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  > $@
 endif	
 else
 ifeq "yes" "$(DO_MUSIC_DETECTION)"
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/diarization/%/show.seg
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $* --pms build/diarization/$*/show.pms.seg > $@
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --pms build/diarization/$*/show.pms.seg > $@
 else
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | python scripts/synced-txt-to-trs.py --fid $*  > $@
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $*  > $@
 endif
 endif
 
 %.sbv: %.hyp
-	cat $^ | python scripts/hyp2sbv.py > $@
+	cat $^ | ./scripts/hyp2sbv.py > $@
 	
 %.txt: %.trs
 	cat $^  | grep -v "^<" > $@

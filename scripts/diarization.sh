@@ -106,7 +106,7 @@ $java -Xmx1024m -classpath $LOCALCLASSPATH fr.lium.spkDiarization.programs.MSegI
 # Speech / non-speech segmentation using a set of GMMs
 $java -Xmx1024m -classpath "$LOCALCLASSPATH" fr.lium.spkDiarization.programs.MDecode --trace --help \
   --fInputDesc=audio2sphinx,1:3:2:0:0:0,13,0:0:0 --fInputMask=$features --sInputMask=$iseg \
---sOutputMask=$pmsseg --dPenality=200,200,10 --tInputMask=$pmsgmm $show
+--sOutputMask=$pmsseg --dPenality=1000,1000,10 --tInputMask=$pmsgmm $show
 
 
 # GLR-based segmentation, make small segments

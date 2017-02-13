@@ -1,12 +1,13 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 '''
 Created on May 21, 2010
 
 @author: tanel
 '''
+from __future__ import print_function
 
-import os, sys, thread, re
+import os, sys, re
 from subprocess import Popen, PIPE
 
 def process_sentence(proc, sent):
@@ -19,9 +20,9 @@ def process_sentence(proc, sent):
         text = "<s> " + " ".join([ww[2] for ww in sent]) + " </s>\n"
         #print "before: ", text
         
-        proc.stdin.write(text)
+        proc.stdin.write(text.encode('utf-8'))
         proc.stdin.flush()
-        text = proc.stdout.readline()
+        text = proc.stdout.readline().decode('utf-8')
         #print "after:  ", text
         words = text.split()[1:-1]
         if len(words) == 0:
@@ -62,7 +63,7 @@ def process_sentence(proc, sent):
             result.append((new_start,new_dur,new_word, new_id))
         
         for r in result:
-            print r[3].replace("-", "_"), "1", r[0], r[1], r[2] 
+            print(r[3].replace("-", "_"), "1", r[0], r[1], r[2])
         
 
 if __name__ == '__main__':
@@ -73,7 +74,11 @@ if __name__ == '__main__':
     last_id = ""
     
     for l in sys.stdin:
-        ss = l.split()
+
+        if sys.version_info >= (3, 0):
+            ss = l.split()
+        else:
+            ss = l.decode('utf-8').split()
         id = ss[0]
         channel = ss[1]
         start = float(ss[2])

@@ -2,6 +2,17 @@
 
 ## Updates ##
 
+### 2017-02-13 ###
+  * Migrated to Kaldi's chain models. Needs fairly recent version of Kaldi, so you need to
+    recompile Kaldi if you are upgrading. Better accuracy and faster than before 
+    (0.6 x realtime using one CPU).
+  
+  * The acoustic models are trained using noised and reverberated audio data, which
+    means that the ASR accuracy on noisy data should be much better. Also, improved the 
+    robustness of speech-non-speech detection against noise. 
+    
+  * The python scripts should now work for both Python 2.7 and 3.3+
+
 ### 2015-12-29 ###
   * Updated acoustic and language models (see below on how to update). No need
     to update Kaldi. Recognition errors reduced by more than 10%. Word error rate on broadcast conversations is about 14%.
@@ -60,14 +71,13 @@ with Kaldi.
 The system performs:
   * Speech/non-speech detection, speech segmentation, speaker diarization (using the LIUMSpkDiarization package, http://lium3.univ-lemans.fr/diarization)
   * Two-pass decoding
-    - With Kaldi's "online-nnet2" style acoustic models that use i-vectors for speaker adaptation
+    - With Kaldi's so-called chain TDNN acoustic models that use i-vectors for speaker adaptation
     - Rescoring with a larger language model
   * Finally, the recognized words are reconstructed into compound words (i.e., decoding is done using de-compounded words).
     This is the only part that is specific to Estonian.
 
-Trancription is performed in roughly 1.3x realtime on a 8 year old server, using one CPU.
-E.g., transcribing a radio inteview of length 8:23 takes about 11:20 minutes. This
-can be accelerated to be faster than realtime using multithreaded decoding (see below).
+Trancription is performed in roughly 0.6x realtime on a 10 year old server, using one CPU.
+E.g., transcribing a radio inteview of length 8:23 takes about 5 minutes.
 
 Memory requirements: during most of the work, less than 1 GB of memory is used.
 
@@ -98,6 +108,7 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
   * C/C++ compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
   * Perl
   * java-jre
+  * Python 2.7 or 3.5+
 
 ### Audio processing tools ###
 
@@ -140,7 +151,7 @@ install guide for details):
 
 ### Python  ###
 
-Install python (at least 2.6), using your OS tools (e.g., `apt-get`). 
+Install python (at least 2.7), using your OS tools (e.g., `apt-get`). 
 Make sure `pip` is installed (`apt-get install python-pip`).
 
 ### Python package pyfst ###
@@ -166,7 +177,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-12-29.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-02-13.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -206,7 +217,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2015-12-29.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-02-13.tgz | tar xvz 
 
 Initialize the new models:
 
@@ -229,16 +240,16 @@ For example:
 
     make build/output/intervjuu201306211256.txt
     
-Result (if everything goes fine, after about 11:20 minutes later (audio file was 8:35 in length, resulting in realtime factor of 1.3)).
+Result (if everything goes fine, after about 5 minutes later (audio file was 8:35 in length, resulting in realtime factor of 0.6)).
 Also demos automatic punctuation (not yet publicly available):
 
     # head -5 build/output/intervjuu201306211256.txt
     
-    Palgainfoagentuur koostöös, et see on laim ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu. Meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder. Tervist.
-    Kui laiapõhjaline see uuring oli, ma saan aru, et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
-    Jah, me seekord viisime uuringu läbi ka Lätis ja Leedus ja, ja see on täpselt samasuguse metoodikaga, nii et me saame võrrelda Läti ja Leedu andmed
-    seda küll mitte täna sellepärast et Läti-Leedu tööandjatele ankeete lõpetavad. Täna vaatasime töötajate tööotsijate uuringusse väga põgusalt sisse,
-    need tulemused tulevad juuli käigus
+    Palgainfoagentuur koostöös CV-Online'i ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu. Meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder. Tervist.
+    Kui laiapõhjaline, see uuring oli, ma saan aru, et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+    Jah, me seekord viis uuringu läbi ka Lätis ja Leedus ja, ja see on täpselt samasuguse metoodika.
+    Aga nii, et me saame võrrelda Läti ja Leedu andmeid, seda küll mitte täna, sellepärast et Läti-Leedu tööandjatele ankeete lõpetavad. Täna vaatasime töötajate tööotsijate uuringus väga põgusalt, siis need tulemused tulevad juuli käigus.
+    Aga kui rääkida tänasest küsitlusest, siis tee pöörasid tähelepanu sellele, kui täpsemalt rääkisite sellest, millised on toimunud ja prognoositavad muutused põhipalkade ja nende põhjused, kas saaksite meile ka sellest rääkida.
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
@@ -274,32 +285,4 @@ E.g., being in some data directory, you can execute:
 This transcribes the file `audio/test.ogg` and puts the result in Transcriber XML format to `result/test.trs`.
 The script automatically deletes the intermediate files generated during decoding, unless the option `--clean false` is
 used.
-
-## Speeding up decoding ##
-
-The most time-consuming parts of the system can be executed in parallel. This speeds up decoding
-with the expense of using more CPU cores.
-
-To enable multi-threaded execution, set the variable `nthreads` in `Makefile.options`, e.g.:
-
-    nthreads = 4
-
-The speedup is not quite linear, mostly because speaker diarization is still single-threaded.
-For example, decoding an audio file of 8:35 minutes takes
-   
-  * 11:20 minutes with 1 thread (1.3x realtime)
-  * 7:03 minutes with 4 threads (0.8x realtime)
-    
-~~The lattice rescoring part that is very memory intensive is executed in a single thread. So, if your
-server has many cores but relatively little memory (say 16 cores and 16 GB RAM), you can set `nthreads = 5`,
-and use up to 3 parallel decoding processes (e.g., using a queue system, such as Sun Grid Engine).
-This way, the total memory consumption should never exceed 16 GB, and the decoding happens in ~1.5x realtime.~~
-
-The above no longer applies. Lattice rescoring doesn't require a lot of memory.
-
-
-## One-pass decoding using online DNN models with speaker i-vectors ##
-
-This is now the only way to decode. The option to decode with non-online
-nnet models has been removed, since it is much slower and not more accurate.
 

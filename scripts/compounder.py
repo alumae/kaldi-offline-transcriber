@@ -1,5 +1,5 @@
-#!/usr/bin/python -u
-
+#! /usr/bin/env python
+from __future__ import print_function
 import sys
 import fst
 ''' 
@@ -40,7 +40,7 @@ def make_compounder(words, word_ids):
 
 if __name__ == '__main__':
   if len(sys.argv) != 3:
-    print >> sys.stderr, "Usage: %s G.fst words.txt" % sys.argv[0]
+    print("Usage: %s G.fst words.txt" % sys.argv[0], file=sys.stderr)
     
   g = fst.read(sys.argv[1])
 
@@ -82,5 +82,5 @@ if __name__ == '__main__':
           labels.append(unks.pop(0))
         else:
           labels.append(syms_list[arc.olabel])
-    print " ".join(labels)
+    print(" ".join(labels))
     sys.stdout.flush()
