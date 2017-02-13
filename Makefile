@@ -56,7 +56,7 @@ THIS_DIR := $(shell dirname $(call where-am-i))
 
 FINAL_PASS=chain_tdnn_bi_online_pruned_rescored_main
 
-LD_LIBRARY_PATH=$(KALDI_ROOT)/tools/openfst/lib:$(LD_LIBRARY_PATH)
+LD_LIBRARY_PATH+=$(KALDI_ROOT)/tools/openfst/lib
 
 .SECONDARY:
 .DELETE_ON_ERROR:
