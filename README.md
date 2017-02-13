@@ -125,11 +125,8 @@ Install the ATLAS matrix algebra library. On Ubuntu/Debian (as root):
       
 ### Kaldi ###
 
-IMPORTANT: The system works agains Kaldi trunk as of 2014-11-15. The system
+IMPORTANT: The system works agains Kaldi trunk as of 2017-02-01. The system
 may not work with Kaldi revisions that are a lot (months) older or newer than that.
-
-Update: also tested against Kaldi as of 2015-11-15 -- everything works OK.
-
 
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
 http://kaldi-asr.org/doc/install.html. Install the `kaldi-trunk` version.
