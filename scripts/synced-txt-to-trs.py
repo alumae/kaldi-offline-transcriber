@@ -69,11 +69,7 @@ def print_sections(sections):
       print('</Section>')
 
 def titlecase(s):
-    return re.sub(re.compile(r"[\w]+('[\w]+)?", flags=re.UNICODE),
-                  lambda mo: mo.group(0)[0].upper() +
-                             mo.group(0)[1:].lower(),
-                  s)
-
+    return s[0].upper() + s[1:]
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Convert hyp to trs file')
