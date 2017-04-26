@@ -6,6 +6,7 @@ import re
 import argparse
 import datetime
 import codecs
+import textwrap
 
 def print_header(filename):
   now = datetime.datetime.now()
@@ -71,11 +72,62 @@ def print_sections(sections):
 def titlecase(s):
     return s[0].upper() + s[1:]
 
+def split_line(start_time, end_time, content, max_characters, tolerance=25):
+  if len(content) > max_characters + tolerance:
+    split_content = textwrap.wrap(content, max_characters)
+    if len(split_content[-1]) <= tolerance:
+      split_content[-2] += (" " + split_content[-1])
+      split_content.pop()
+    time_length = end_time - start_time
+    result = []
+    current_time_length = 0.0
+    for split_part in split_content:
+      part_length = (1.0 * (len(split_part) + 1) / len(content)) * time_length
+      result.append((start_time + current_time_length, start_time + current_time_length + part_length, split_part))
+      current_time_length += part_length
+    return result
+  else:
+    return([(start_time, end_time, content)])
+
+
+
+
+def print_sbv(sbv_max_characters=100):
+  for i in range(len(sections)):
+    section_type, turns = sections[i]
+    starttime = turns[0][1][0][0]
+    endtime = turns[-1][1][-1][1]
+    if i < len(sections) - 1 and endtime > sections[i+1][1][0][1][0][0]:
+      # do not allow endtime to overlap
+      print("Adjusting section end from %f to to %f" % (turns[-1][1][-1][1], sections[i+1][1][0][1][0][0]), file=sys.stderr)
+      endtime = sections[i+1][1][0][1][0][0]
+    
+    if section_type == "report":
+      for (speaker, turn) in turns:
+        turn_endtime =  turn[-1][1]
+        if turn_endtime > endtime:
+          turn_endtime = endtime
+        #print('<Turn speaker="%s" startTime="%s" endTime="%s">' % (speaker, turn[0][0], turn_endtime))
+
+        for line in turn:
+          #print line[2]
+          #print('<Sync time="%s"/>' % line[0])
+          split_content = split_line(line[0], line[1], " ".join(line[2]), max_characters=sbv_max_characters)
+          for split_part in split_content:
+            datetime1 = datetime.datetime.utcfromtimestamp(split_part[0])
+            datetime2 = datetime.datetime.utcfromtimestamp(split_part[1])
+            print("%s,%s" % (datetime1.strftime('%H:%M:%S.%f'), datetime2.strftime('%H:%M:%S.%f')))
+            print(split_part[2])
+            print()
+
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Convert hyp to trs file')
   parser.add_argument('-s', '--sid', help='Speaker ID file, with lines in format <speaker_code> <speaker full name>')
   parser.add_argument('--fid', default="unknown", help="File id to be used in trs header")
   parser.add_argument('--pms', help="File with speech/non-speech segmentation")
+  parser.add_argument('--output-sbv', action="store_true", default=False, help="Output SBV instead")
+  parser.add_argument('--sbv-max-characters', type=int, default=100, help="Maximum number of characters in a SBV segment; if more, segment will be split")
   args = parser.parse_args()
   
 
@@ -150,10 +202,12 @@ if __name__ == '__main__':
   
   sections.sort(key=lambda turns: turns[1][0][1][0][0])  
   
-     
-  print_header(args.fid)
-  print_speakers(speakers, speaker_table)        
-  print_sections(sections)
-  print_footer()  
+  if args.output_sbv:
+    print_sbv(args.sbv_max_characters)
+  else:
+    print_header(args.fid)
+    print_speakers(speakers, speaker_table)        
+    print_sections(sections)
+    print_footer()  
 
     

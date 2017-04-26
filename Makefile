@@ -242,7 +242,12 @@ build/trans/%/chain_tdnn_bi_online_pruned_rescored_main/decode/log: build/trans/
 
 
 %/decode/.ctm: %/decode/log
-	steps/get_ctm.sh  `dirname $*` $*/graph $*/decode
+	frame_shift_opt=""; \
+	if [ -f $*/frame_subsampling_factor ]; then \
+	  factor=`cat $*/frame_subsampling_factor`; \
+	  frame_shift_opt="--frame-shift 0.0$$factor"; \
+	fi; \
+	steps/get_ctm.sh $$frame_shift_opt `dirname $*` $*/graph $*/decode
 	touch -m $@
 
 build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
@@ -292,13 +297,14 @@ build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).sy
 	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --pms build/diarization/$*/show.pms.seg > $@
 else
 build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $*  > $@
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* > $@
 endif
 endif
 
-%.sbv: %.hyp
-	cat $^ | ./scripts/hyp2sbv.py > $@
-	
+build/trans/%/$(FINAL_PASS).sbv: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --output-sbv > $@
+
+
 %.txt: %.trs
 	cat $^  | grep -v "^<" > $@
 
@@ -308,6 +314,7 @@ endif
 	cat $^ | perl -npe 's/.*(\(\S+\))$$/ \1/' | paste $@.tmp - > $@
 	#rm $@.tmp
 	
+
 
 
 build/output/%.trs: build/trans/%/$(FINAL_PASS).trs	
@@ -329,6 +336,8 @@ build/output/%.with-compounds.ctm: build/trans/%/$(FINAL_PASS).with-compounds.ct
 build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
 	mkdir -p `dirname $@`
 	cp $^ $@
+
+
 
 ### Speaker ID stuff
 
