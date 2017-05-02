@@ -2,6 +2,9 @@
 
 ## Updates ##
 
+### 2017-05-02 ###
+  * Replaced the usage of the pyfst library in compounder.py with OpenFst's native Python extension (issue #14). See below on how to install it.
+
 ### 2017-02-13 ###
   * Migrated to Kaldi's chain models. Needs fairly recent version of Kaldi, so you need to
     recompile Kaldi if you are upgrading. Better accuracy and faster than before 
@@ -151,18 +154,16 @@ install guide for details):
 Install python (at least 2.7), using your OS tools (e.g., `apt-get`). 
 Make sure `pip` is installed (`apt-get install python-pip`).
 
-### Python package pyfst ###
+### OpenFst's Python extension ###
 
-The python package `pyfst` is needed for reconstructing compound words. This package
+OpenFst's Python wrapper (http://www.openfst.org/twiki/bin/view/FST/PythonExtension) 
+is needed for reconstructing compound words. This package
 itself needs OpenFst shared libararies, that we already built when installing Kaldi.
 To install `pyfst` and make it use the Kaldi's OpenFst libraries, install
 it like that (as root):
 
-    CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install pyfst
+    CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install openfst
     
-If you have OpenFst installed as a system-wide library, you don't need the flags, i.e., just execute (as root):
-
-    pip install pyfst
     
 ### This package ###
 

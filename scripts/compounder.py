@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 from __future__ import print_function
 import sys
-import fst
+import pywrapfst as fst
+import pdb
 ''' 
 Script that adds symbols for compound word reconstruction (+C+, +D+, the 
 latter is word dash-seperated words) between tokens, using a "hidden event LM",
@@ -9,32 +10,37 @@ i.e. a LM that includes also +C+ and +D+.
 '''
 
 
-def make_sentence_fsa(words, word_ids):
-  t = fst.StdVectorFst()
-  t.start = t.add_state()
+def make_sentence_fsa(syms, word_ids):
+  t = fst.Fst()
+  start_state = t.add_state()
+  assert(start_state == 0)
+  t.set_start(start_state)
   i = 0
   space_id = syms["<space>"]
   for word_id in word_ids:
     if i > 0:
-      t.add_state()
-      t.add_arc(i,  i+1 , space_id, space_id)    
+      new_state = t.add_state()
+      assert(new_state == i+1)
+      t.add_arc(i, fst.Arc(space_id, space_id, 1, i+1))
       i += 1
     t.add_state()
-    t.add_arc(i,  i+1, word_id, word_id)
+    t.add_arc(i, fst.Arc(word_id, word_id, 1, i+1))
     i+=1
-  t[i].final = True
+  t.set_final(i, 1)
   return t
 
-def make_compounder(words, word_ids):
-  c = fst.StdVectorFst()
-  c.start = c.add_state()
+def make_compounder(syms, word_ids):
+  c = fst.Fst()
+  start_state = c.add_state()
+  assert(start_state == 0)
+  c.set_start(start_state)
   space_id = syms["<space>"]
-  c.add_arc(0, 0, space_id, syms["<eps>"])
-  c.add_arc(0, 0, space_id, syms["+C+"])
-  c.add_arc(0, 0, space_id, syms["+D+"])
+  c.add_arc(0, fst.Arc(space_id, syms["<eps>"], 1, 0))
+  c.add_arc(0, fst.Arc(space_id, syms["+C+"], 1, 0))
+  c.add_arc(0, fst.Arc(space_id, syms["+D+"], 1, 0))
   for word_id in word_ids:
-    c.add_arc(0, 0, word_id, word_id)  
-  c[0].final = True
+    c.add_arc(0, fst.Arc(word_id, word_id, 1, 0))
+  c.set_final(0, 1)
   return c
 
 
@@ -42,7 +48,7 @@ if __name__ == '__main__':
   if len(sys.argv) != 3:
     print("Usage: %s G.fst words.txt" % sys.argv[0], file=sys.stderr)
     
-  g = fst.read(sys.argv[1])
+  g = fst.Fst.read(sys.argv[1])
 
   syms = {}
   syms_list = []
@@ -64,23 +70,24 @@ if __name__ == '__main__':
       word_ids.append(word_id)
       if word_id == unk_id:
         unks.append(word)
-    
   
-    sentence = make_sentence_fsa(words, word_ids)
-    compound = make_compounder(words, word_ids)
-    composed = sentence >> compound
-    composed2 = composed >> g
+  
+    sentence = make_sentence_fsa(syms, word_ids)
+    compound = make_compounder(syms, word_ids)
+    composed = fst.compose(sentence, compound)
+    composed2 = fst.compose(composed, g)
     
-    alignment = composed2.shortest_path()
-    alignment.remove_epsilon()
-    alignment.top_sort()
-    arcs = (next(state.arcs) for state in alignment)
+    alignment = fst.shortestpath(composed2)
+    alignment.rmepsilon()
+    alignment.topsort()
+        
     labels = []
-    for arc in arcs:
-      if arc.olabel > 0:
-        if arc.olabel == unk_id:
-          labels.append(unks.pop(0))
-        else:
-          labels.append(syms_list[arc.olabel])
+    for state in alignment.states():
+      for arc in alignment.arcs(state):
+        if arc.olabel > 0:
+          if arc.olabel == unk_id:
+            labels.append(unks.pop(0))
+          else:
+            labels.append(syms_list[arc.olabel])
     print(" ".join(labels))
     sys.stdout.flush()
