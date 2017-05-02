@@ -159,7 +159,7 @@ Make sure `pip` is installed (`apt-get install python-pip`).
 OpenFst's Python wrapper (http://www.openfst.org/twiki/bin/view/FST/PythonExtension) 
 is needed for reconstructing compound words. This package
 itself needs OpenFst shared libararies, that we already built when installing Kaldi.
-To install `pyfst` and make it use the Kaldi's OpenFst libraries, install
+To install OpenFst's Python extension and make it use the Kaldi's OpenFst libraries, install
 it like that (as root):
 
     CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install openfst
