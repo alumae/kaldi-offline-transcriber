@@ -8,7 +8,7 @@ DO_MUSIC_DETECTION?=yes
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
 DO_SPEAKER_ID?=yes
-SID_THRESHOLD?=25
+SID_POSTERIOR_THRESHOLD?=0.5
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
@@ -374,31 +374,19 @@ build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt
 build/sid/%/ivectors: build/sid/%/mfcc
 	rm -rf build/sid/$*/ivectors
 	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) \
-		$(THIS_DIR)/kaldi-data/extractor_2048_top500 build/sid/$* $@
+		$(THIS_DIR)/kaldi-data/extractor_2048 build/sid/$* $@
 
-# a cross product of train and test speakers
-build/sid/%/sid-trials.txt: build/sid/%/ivectors
-	cut -f 1 -d " " $(THIS_DIR)/kaldi-data/ivectors_train_top500/spk_ivector.scp | \
-	while read a; do \
-		cut -f 1 -d " " build/sid/$*/ivectors/spk_ivector.scp | \
-		while read b; do \
-			echo "$$a $$b"; \
-		done ; \
-	done > $@
 
-# similarity scores
-build/sid/%/sid-scores.txt: build/sid/%/sid-trials.txt
-	ivector-plda-scoring \
-		"ivector-copy-plda --smoothing=0.1 $(THIS_DIR)/kaldi-data/ivectors_train_top500/plda - |" \
-		"ark:ivector-subtract-global-mean scp:$(THIS_DIR)/kaldi-data/ivectors_train_top500/spk_ivector.scp ark:- |" \
-		"ark:ivector-subtract-global-mean scp:build/sid/$*/ivectors/spk_ivector.scp ark:- |" \
-   build/sid/$*/sid-trials.txt $@
+build/sid/%/sid-posteriors.txt: build/sid/%/ivectors
+	copy-vector scp:build/sid/$*/ivectors/spk_ivector.scp ark,t:- | \
+	  perl -npe 's/ \]//; s/ \[//; s/ +/,/g' > build/sid/$*/ivectors/spk_ivector.csv
+	python local/sid/apply_dnn.py $(THIS_DIR)/kaldi-data/sid.h5 build/sid/$*/ivectors/spk_ivector.csv > $@
 
 # pick speakers above the threshold
-build/sid/%/sid-result.txt: build/sid/%/sid-scores.txt
-	cat build/sid/$*/sid-scores.txt | sort -u -k 2,2  -k 3,3nr | sort -u -k2,2 | \
-	awk 'int($$3)>=$(SID_THRESHOLD)' | perl -npe 's/(\S+) \S+-(S\d+) \S+/\2 \1/; s/-/ /g' | \
-	LC_ALL=C sort -k 2 | LC_ALL=C join -1 2 - $(THIS_DIR)/kaldi-data/ivectors_train_top500/speaker2names.txt | cut -f 2- -d " " > $@
+build/sid/%/sid-result.txt: build/sid/%/sid-posteriors.txt
+	cat build/sid/$*/sid-posteriors.txt | \
+	awk '{if ($$2 > $(SID_POSTERIOR_THRESHOLD) && $$3 != "<unk>") print $$0}' | \
+  cut -f 1,3- -d " " |  perl -npe 's/^\S+-(S\d+)/\1/;' > $@
 
 
 

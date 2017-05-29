@@ -2,6 +2,9 @@
 
 ## Updates ##
 
+### 2017-05-29 ###
+  * Replaced Kaldi-based speaker ID with a custom DNN-based implementation. Requires Keras 1.2.
+
 ### 2017-05-02 ###
   * Replaced the usage of the pyfst library in compounder.py with OpenFst's native Python extension (issue #14). See below on how to install it.
 
@@ -154,6 +157,7 @@ install guide for details):
 Install python (at least 2.7), using your OS tools (e.g., `apt-get`). 
 Make sure `pip` is installed (`apt-get install python-pip`).
 
+
 ### OpenFst's Python extension ###
 
 OpenFst's Python wrapper (http://www.openfst.org/twiki/bin/view/FST/PythonExtension) 
@@ -163,6 +167,18 @@ To install OpenFst's Python extension and make it use the Kaldi's OpenFst librar
 it like that (as root):
 
     CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install openfst
+
+### Keras ###
+
+Speaker ID system rquires Keras 1.2. To install:
+
+    pip install keras==1.2
+    
+Note that this is only needed if you really need speaker ID. You can turn speaker ID off
+using the following line in `Makefile.options`:
+
+
+    DO_SPEAKER_ID?=no
     
     
 ### This package ###
@@ -175,7 +191,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-02-13.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-05-29.tgz | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -215,7 +231,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-02-13.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-05-29.tgz | tar xvz 
 
 Initialize the new models:
 
