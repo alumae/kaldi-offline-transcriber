@@ -168,17 +168,18 @@ it like that (as root):
 
     CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install openfst
 
-### Keras ###
+### Keras and Tensorflow ###
 
-Speaker ID system rquires Keras 1.2. To install:
+Speaker ID system rquires Keras 1.2 and Tensorflow. To install:
 
     pip install keras==1.2
+    pip install tensorflow
     
 Note that this is only needed if you really need speaker ID. You can turn speaker ID off
 using the following line in `Makefile.options`:
 
 
-    DO_SPEAKER_ID?=no
+    DO_SPEAKER_ID=no
     
     
 ### This package ###
