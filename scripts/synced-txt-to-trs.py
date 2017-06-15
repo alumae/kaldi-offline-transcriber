@@ -120,6 +120,35 @@ def print_sbv(sbv_max_characters=100):
             print(split_part[2])
             print()
 
+def print_srt(sbv_max_characters=100):
+  j = 1
+  for i in range(len(sections)):
+    section_type, turns = sections[i]
+    starttime = turns[0][1][0][0]
+    endtime = turns[-1][1][-1][1]
+    
+    if i < len(sections) - 1 and endtime > sections[i+1][1][0][1][0][0]:
+      # do not allow endtime to overlap
+      print("Adjusting section end from %f to to %f" % (turns[-1][1][-1][1], sections[i+1][1][0][1][0][0]), file=sys.stderr)
+      endtime = sections[i+1][1][0][1][0][0]
+    
+    if section_type == "report":
+      for (speaker, turn) in turns:
+        turn_endtime =  turn[-1][1]
+        if turn_endtime > endtime:
+          turn_endtime = endtime
+
+        for line in turn:
+          split_content = split_line(line[0], line[1], " ".join(line[2]), max_characters=sbv_max_characters)
+          for split_part in split_content:
+            datetime1 = datetime.datetime.utcfromtimestamp(split_part[0])
+            datetime2 = datetime.datetime.utcfromtimestamp(split_part[1])
+            print(j)
+            print("%s --> %s" % (datetime1.strftime('%H:%M:%S,%f')[:-3], datetime2.strftime('%H:%M:%S,%f')[:-3]))
+            print(split_part[2])
+            print()
+            j += 1
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Convert hyp to trs file')
@@ -127,6 +156,7 @@ if __name__ == '__main__':
   parser.add_argument('--fid', default="unknown", help="File id to be used in trs header")
   parser.add_argument('--pms', help="File with speech/non-speech segmentation")
   parser.add_argument('--output-sbv', action="store_true", default=False, help="Output SBV instead")
+  parser.add_argument('--output-srt', action="store_true", default=False, help="Output SRT instead")
   parser.add_argument('--sbv-max-characters', type=int, default=100, help="Maximum number of characters in a SBV segment; if more, segment will be split")
   args = parser.parse_args()
   
@@ -204,6 +234,8 @@ if __name__ == '__main__':
   
   if args.output_sbv:
     print_sbv(args.sbv_max_characters)
+  elif args.output_srt:
+    print_srt(args.sbv_max_characters)
   else:
     print_header(args.fid)
     print_speakers(speakers, speaker_table)        

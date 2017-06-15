@@ -307,6 +307,9 @@ endif
 build/trans/%/$(FINAL_PASS).sbv: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
 	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --output-sbv > $@
 
+build/trans/%/$(FINAL_PASS).srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
+	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --output-srt > $@
+
 
 %.txt: %.trs
 	cat $^  | grep -v "^<" > $@
@@ -340,6 +343,9 @@ build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
 	mkdir -p `dirname $@`
 	cp $^ $@
 
+build/output/%.srt: build/trans/%/$(FINAL_PASS).srt
+	mkdir -p `dirname $@`
+	cp $^ $@
 
 
 ### Speaker ID stuff
