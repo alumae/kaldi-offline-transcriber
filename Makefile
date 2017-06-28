@@ -148,7 +148,7 @@ build/audio/base/%.wav: src-audio/%.m4a
 	
 build/audio/base/%.wav: src-audio/%.mp4
 	mkdir -p `dirname $@`
-	sox $^ -c 1 build/audio/base/$*.wav rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
 
 build/audio/base/%.wav: src-audio/%.flac
 	mkdir -p `dirname $@`
