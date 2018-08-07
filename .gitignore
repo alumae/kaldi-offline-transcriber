@@ -6,3 +6,4 @@ steps
 utils
 sid
 Makefile.options
+rnnlm

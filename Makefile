@@ -7,7 +7,7 @@ DO_MUSIC_DETECTION?=yes
 
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
-DO_SPEAKER_ID?=yes
+DO_SPEAKER_ID?=no
 SID_POSTERIOR_THRESHOLD?=0.5
 
 # Where is Kaldi root directory?
@@ -22,7 +22,7 @@ njobs ?= 1
 # How many threads to use in each process
 nthreads ?= 1
 
-PATH:=utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/online2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/lmbin:$(PATH):$(KALDI_ROOT)/src/ivectorbin:$(KALDI_ROOT)/src/nnet3bin:$(PATH)
+PATH:=utils:$(KALDI_ROOT)/src/bin:$(KALDI_ROOT)/tools/openfst/bin:$(KALDI_ROOT)/src/fstbin/:$(KALDI_ROOT)/src/gmmbin/:$(KALDI_ROOT)/src/featbin/:$(KALDI_ROOT)/src/lm/:$(KALDI_ROOT)/src/sgmmbin/:$(KALDI_ROOT)/src/sgmm2bin/:$(KALDI_ROOT)/src/fgmmbin/:$(KALDI_ROOT)/src/latbin/:$(KALDI_ROOT)/src/nnet2bin/:$(KALDI_ROOT)/src/online2bin/:$(KALDI_ROOT)/src/kwsbin:$(KALDI_ROOT)/src/lmbin:$(PATH):$(KALDI_ROOT)/src/ivectorbin:$(KALDI_ROOT)/src/nnet3bin:$(KALDI_ROOT)/src/rnnlmbin:$(PATH)
 
 # Needed for compounder.py
 LD_LIBRARY_PATH:=$(KALDI_ROOT)/tools/openfst/lib:$(LD_LIBRARY_PATH)
@@ -38,12 +38,18 @@ LM ?=language_model/pruned.vestlused-dev.splitw2.arpa.gz
 # More aggressively pruned LM, used in decoding
 PRUNED_LM ?=language_model/pruned6.vestlused-dev.splitw2.arpa.gz
 
+RNNLM_MODEL ?=language_model/rnnlm.vestlused-dev
+
 COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
 
-# Vocabulary in dict format (no pronouncation probs for now)
-VOCAB?=language_model/vestlused-dev.splitw2.dict
+ACOUSTIC_MODEL?=tdnn_7d_online
 
-LM_SCALE?=17
+# Vocabulary in dict format (no pronouncation probs for now)
+VOCAB?=language_model/vestlused-dev.splitw2.with_long.dict
+
+ET_G2P_FST?=/home/tanel/remote/bell/home/tanel/devel/et-g2p-fst
+
+LM_SCALE?=10
 
 DO_PUNCTUATION?=no
 
@@ -57,7 +63,7 @@ endif
 where-am-i = $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(shell dirname $(call where-am-i))
 
-FINAL_PASS=chain_tdnn_bi_online_pruned_rescored_main
+FINAL_PASS=$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk
 
 LD_LIBRARY_PATH:=$(KALDI_ROOT)/tools/openfst/lib:$(LD_LIBRARY_PATH)
 
@@ -72,37 +78,82 @@ export
 .init: .kaldi .lang
 
 .kaldi:
-	rm -f steps utils sid
+	rm -f steps utils sid rnnlm
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/steps
 	ln -s $(KALDI_ROOT)/egs/wsj/s5/utils
 	ln -s $(KALDI_ROOT)/egs/sre08/v1/sid
+	ln -s $(KALDI_ROOT)/scripts/rnnlm
 	mkdir -p src-audio
 
-.lang: build/fst/data/prunedlm build/fst/chain_tdnn_bi_online/graph_prunedlm build/fst/data/largelm build/fst/data/compounderlm
+.lang: build/fst/data/prunedlm_unk build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/fst/data/largelm_unk build/fst/data/compounderlm
+
+
+build/fst/$(ACOUSTIC_MODEL)/final.mdl:
+	rm -rf `dirname $@`
+	mkdir -p `dirname $@`
+	cp -r $(THIS_DIR)/kaldi-data/$(ACOUSTIC_MODEL)/* `dirname $@`
+	perl -i -npe 's#=.*online/#=build/fst/$(ACOUSTIC_MODEL)/#' build/fst/$(ACOUSTIC_MODEL)/conf/*.conf
+	if [ ! -e build/fst/$(ACOUSTIC_MODEL)/cmvn_opts ]; then \
+		echo "--norm-means=false --norm-vars=false" > build/fst/$(ACOUSTIC_MODEL)/cmvn_opts; \
+	fi
 
 
 # Convert dict and LM to FST format
-build/fst/data/dict build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB)
+build/fst/data/dict build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB) build/fst/$(ACOUSTIC_MODEL)/final.mdl
 	rm -rf build/fst/data/dict build/fst/data/prunedlm
 	mkdir -p build/fst/data/dict build/fst/data/prunedlm
 	cp -r $(THIS_DIR)/kaldi-data/dict/* build/fst/data/dict
 	rm -f build/fst/data/dict/lexicon.txt build/fst/data/dict/lexiconp.txt
 	cat models/etc/filler16k.dict | egrep -v "^<.?s>"   > build/fst/data/dict/lexicon.txt
 	cat $(VOCAB) | perl -npe 's/\(\d\)(\s)/\1/' >> build/fst/data/dict/lexicon.txt
-	utils/prepare_lang.sh build/fst/data/dict "++garbage++" build/fst/data/dict/tmp build/fst/data/prunedlm
-	gunzip -c $(PRUNED_LM) | \
-		grep -v '<s> <s>' | \
-		grep -v '</s> <s>' | \
-		grep -v '</s> </s>' | \
-		arpa2fst --disambig-symbol=#0 \
-		  --read-symbol-table=build/fst/data/prunedlm/words.txt  -  $@/G.fst
-	fstisstochastic build/fst/data/prunedlm/G.fst || echo "Warning: LM not stochastic"
+	utils/prepare_lang.sh --phone-symbol-table build/fst/$(ACOUSTIC_MODEL)/phones.txt build/fst/data/dict '<unk>' build/fst/data/dict/tmp build/fst/data/prunedlm
+	gunzip -c $(PRUNED_LM) | arpa2fst --disambig-symbol=#0 \
+		--read-symbol-table=build/fst/data/prunedlm/words.txt  -  build/fst/data/prunedlm/G.fst
+	echo  "Checking how stochastic G is (the first of these numbers should be small):"
+	fstisstochastic build/fst/data/prunedlm/G.fst || echo "not stochastic (probably OK)"	
+	utils/validate_lang.pl build/fst/data/prunedlm || exit 1
 
-build/fst/data/largelm: build/fst/data/prunedlm $(LM)
+build/fst/data/unk_lang_model: build/fst/data/dict
 	rm -rf $@
-	mkdir -p $@
+	utils/lang/make_unk_lm.sh build/fst/data/dict $@
+
+build/fst/data/prunedlm_unk: build/fst/data/unk_lang_model
+	rm -rf $@
+	utils/prepare_lang.sh --unk-fst build/fst/data/unk_lang_model/unk_fst.txt build/fst/data/dict "<unk>" build/fst/data/prunedlm $@
+	cp build/fst/data/prunedlm/G.fst $@
+	
+build/fst/%/graph_prunedlm_unk: build/fst/data/prunedlm_unk build/fst/%/final.mdl
+	rm -rf $@
+	self_loop_scale_arg=""; \
+	if [ -f build/fst/$*/frame_subsampling_factor ]; then \
+	  factor=`cat build/fst/$*/frame_subsampling_factor`; \
+	  if [ $$factor -eq "3" ]; then \
+	    self_loop_scale_arg="--self-loop-scale 1.0 "; \
+	  fi; \
+	fi; \
+	utils/mkgraph.sh $$self_loop_scale_arg build/fst/data/prunedlm_unk build/fst/$* $@
+
+build/fst/data/largelm_unk: build/fst/data/prunedlm
+	rm -rf $@
+	mkdir -p $@	
 	utils/build_const_arpa_lm.sh \
 		$(LM) build/fst/data/prunedlm $@
+	
+build/fst/data/rnnlm_unk: $(RNNLM_MODEL) build/fst/data/prunedlm
+	rm -rf $@
+	mkdir -p $@
+	cp -r $(RNNLM_MODEL)/* $@/
+	cp build/fst/data/prunedlm/words.txt $@/config/words.txt
+	brk_id=`cat $@/config/words.txt | wc -l`; \
+	echo "<brk> $$brk_id" >> $@/config/words.txt; \
+	bos_id=`grep "^<s>" $@/config/words.txt  | awk '{print $$2}'`; \
+	eos_id=`grep "^</s>" $@/config/words.txt  | awk '{print $$2}'`; \
+	echo "--eos-symbol=$${eos_id} --brk-symbol=$${brk_id} --bos-symbol=$${bos_id}" > $@/special_symbol_opts.txt
+	rnnlm/get_word_features.py \
+	  --unigram-probs $@/config/unigram_probs.txt \
+	  build/fst/data/prunedlm/words.txt \
+	  $@/config/features.txt \
+		> $@/word_feats.txt
 
 build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 	rm -rf $@
@@ -115,13 +166,6 @@ build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 		arpa2fst  - | fstprint | \
 		utils/s2eps.pl | fstcompile --isymbols=$@/words.txt --osymbols=$@/words.txt > $@/G.fst 
 		
-build/fst/chain_tdnn_bi_online/final.mdl:
-	rm -rf `dirname $@`
-	mkdir -p `dirname $@`
-	cp -r $(THIS_DIR)/kaldi-data/chain_tdnn_bi_online/* `dirname $@`
-	perl -i -npe 's/=.*online\//=build\/fst\/chain_tdnn_bi_online\//' build/fst/chain_tdnn_bi_online/conf/*.conf
-
-
 build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 	rm -rf $@
 	utils/mkgraph.sh --self-loop-scale 1.0  build/fst/data/prunedlm build/fst/$* $@
@@ -210,38 +254,58 @@ build/trans/%/spk2utt: build/trans/%/utt2spk
 
 
 # MFCC calculation
-build/trans/%/mfcc: build/trans/%/spk2utt
+build/trans/%/mfcc: build/trans/%/spk2utt build/fst/$(ACOUSTIC_MODEL)/final.mdl
 	rm -rf $@
 	rm -f build/trans/$*/cmvn.scp
-	steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --cmd "$$train_cmd" --nj $(njobs) \
+	steps/make_mfcc.sh --mfcc-config build/fst/$(ACOUSTIC_MODEL)/conf/mfcc.conf --cmd "$$decode_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
+	utils/fix_data_dir.sh build/trans/$*
+	touch -m $@
+
+build/trans/%/ivectors: build/trans/%/mfcc
+	rm -rf $@	
+	steps/online/nnet2/extract_ivectors_online.sh --cmd "$$decode_cmd" --nj $(njobs) \
+		build/trans/$* build/fst/$(ACOUSTIC_MODEL)/ivector_extractor $@ || exit 1;
 
 
 ### Do 1-pass decoding using chain online models
-build/trans/%/chain_tdnn_bi_online_pruned/decode/log: build/fst/chain_tdnn_bi_online/final.mdl build/fst/chain_tdnn_bi_online/graph_prunedlm build/trans/%/spk2utt build/trans/%/mfcc
-	rm -rf build/trans/$*/chain_tdnn_bi_online_pruned
-	mkdir -p build/trans/$*/chain_tdnn_bi_online_pruned
-	steps/online/nnet2/extract_ivectors_online.sh --cmd "$$decode_cmd" --nj $(njobs) \
-        build/trans/$* build/fst/chain_tdnn_bi_online/ivector_extractor build/trans/$*/nnet2_online/ivectors
-	(cd build/trans/$*/chain_tdnn_bi_online_pruned; for f in ../../../fst/chain_tdnn_bi_online/*; do ln -s $$f; done)
+build/trans/%/$(ACOUSTIC_MODEL)_pruned_unk/decode/log: build/fst/$(ACOUSTIC_MODEL)/final.mdl build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/trans/%/spk2utt build/trans/%/mfcc build/trans/%/ivectors
+	rm -rf build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk
+	mkdir -p build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk
+	(cd build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk; for f in ../../../fst/$(ACOUSTIC_MODEL)/*; do ln -s $$f; done)
 	steps/nnet3/decode.sh --num-threads $(nthreads) --acwt 1.0  --post-decode-acwt 10.0 \
-	    --config conf/decode.conf --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
-	    --online-ivector-dir build/trans/$*/nnet2_online/ivectors \
+	    --skip-scoring true --cmd "$$decode_cmd" --nj $(njobs) \
+	    --online-ivector-dir build/trans/$*/ivectors \
 	    --skip-diagnostics true \
-      build/fst/chain_tdnn_bi_online/graph_prunedlm build/trans/$* `dirname $@` || exit 1;
-	(cd build/trans/$*/chain_tdnn_bi_online_pruned; ln -s ../../../fst/chain_tdnn_bi_online/graph_prunedlm graph)
+      build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/trans/$* `dirname $@` || exit 1;
+	(cd build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk; ln -s ../../../fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk graph)
 
 # Rescore lattices with a larger language model
-build/trans/%/chain_tdnn_bi_online_pruned_rescored_main/decode/log: build/trans/%/chain_tdnn_bi_online_pruned/decode/log build/fst/data/largelm
-	rm -rf build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main
-	mkdir -p build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main
-	(cd build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main; for f in ../../../fst/chain_tdnn_bi_online/*; do ln -s $$f; done)
+build/trans/%/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk/decode/log: build/trans/%/$(ACOUSTIC_MODEL)_pruned_unk/decode/log build/fst/data/largelm_unk
+	rm -rf build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk
+	mkdir -p build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk
+	(cd build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk; for f in ../../../fst/$(ACOUSTIC_MODEL)/*; do ln -s $$f; done)
 	steps/lmrescore_const_arpa.sh \
-	  build/fst/data/prunedlm build/fst/data/largelm \
+	  build/fst/data/prunedlm_unk build/fst/data/largelm_unk \
 	  build/trans/$* \
-	  build/trans/$*/chain_tdnn_bi_online_pruned/decode build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main/decode || exit 1;
-	cp -r --preserve=links build/trans/$*/chain_tdnn_bi_online_pruned/graph build/trans/$*/chain_tdnn_bi_online_pruned_rescored_main/	
+	  build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk/decode build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk/decode || exit 1;
+	cp -r --preserve=links build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk/graph build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk/	
+
+
+build/trans/%/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/decode/log: build/trans/%/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk/decode/log build/fst/data/rnnlm_unk
+	rm -rf build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk
+	mkdir -p build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk
+	(cd build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk; for f in ../../../fst/$(ACOUSTIC_MODEL)/*; do ln -s $$f; done)
+	rnnlm/lmrescore_pruned.sh \
+	    --skip-scoring true \
+	    --max-ngram-order 4 \
+      build/fst/data/largelm_unk \
+      build/fst/data/rnnlm_unk \
+      build/trans/$* \
+	    build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk/decode \
+      build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/decode
+	cp -r --preserve=links build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk/graph build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/	
 
 
 %/decode/.ctm: %/decode/log
@@ -253,12 +317,28 @@ build/trans/%/chain_tdnn_bi_online_pruned_rescored_main/decode/log: build/trans/
 	steps/get_ctm.sh $$frame_shift_opt `dirname $*` $*/graph $*/decode
 	touch -m $@
 
+%_unk/decode/.ctm: %_unk/decode/log
+	frame_shift_opt=""; \
+	if [ -f  $*_unk/frame_subsampling_factor ]; then \
+	  factor=`cat $*_unk/frame_subsampling_factor`; \
+	  frame_shift_opt="--frame-shift 0.0$$factor"; \
+	fi; \
+	$(THIS_DIR)/local/get_ctm_unk.sh $$frame_shift_opt \
+	  --unk-p2g-cmd "python3 $(THIS_DIR)/local/unk_p2g.py --p2g-cmd 'python3 $(ET_G2P_FST)/g2p.py --inverse --fst  $(ET_G2P_FST)/data/chars.fst --nbest 1'" \
+	  --unk-word '<unk>' \
+	  --min-lmwt $(LM_SCALE) \
+	  --max-lmwt $(LM_SCALE) \
+	  `dirname $*` $*_unk/graph $*_unk/decode
+	touch -m $@
+
+
+
 build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat build/trans/$*/decode/score_$(LM_SCALE)/`dirname $*`.ctm  | perl -npe 's/(.*)-(S\d+)---(\S+)/\1_\3_\2/' > $@
 
-%.with-compounds.ctm: %.splitw2.ctm build/fst/data/compounderlm
-	scripts/compound-ctm.py \
-		"scripts/compounder.py build/fst/data/compounderlm/G.fst build/fst/data/compounderlm/words.txt" \
+%.with-compounds.ctm: %.splitw2.ctm build/fst/data/compounderlm	
+	python2.7 scripts/compound-ctm.py \
+		"python2.7 scripts/compounder.py build/fst/data/compounderlm/G.fst build/fst/data/compounderlm/words.txt" \
 		< $*.splitw2.ctm > $@
 
 %.segmented.ctm: %.segmented.with-compounds.ctm
@@ -310,18 +390,8 @@ build/trans/%/$(FINAL_PASS).sbv: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).sy
 build/trans/%/$(FINAL_PASS).srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
 	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --output-srt > $@
 
-
 %.txt: %.trs
 	cat $^  | grep -v "^<" > $@
-
-%.punctuated.hyp: %.hyp
-	cat $^ | perl -npe 's/ \(\S+\)$$//' |  hidden-ngram -hidden-vocab $(PUNCTUATOR_HIDDEN_VOCAB) -order 4 -lm $(PUNCTUATOR_LM) -text - -keep-unk | \
-	perl -npe 's/ ,COMMA/,/g; s/ \.PERIOD/\./g' > $@.tmp
-	cat $^ | perl -npe 's/.*(\(\S+\))$$/ \1/' | paste $@.tmp - > $@
-	#rm $@.tmp
-	
-
-
 
 build/output/%.trs: build/trans/%/$(FINAL_PASS).trs	
 	mkdir -p `dirname $@`
