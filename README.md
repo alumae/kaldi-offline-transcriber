@@ -134,7 +134,7 @@ In the following we assume the user is `speech`, with a home directory `/home/sp
 
 Install the ATLAS matrix algebra library. On Ubuntu/Debian (as root):
 
-    apt-get install libatlas-dev
+    apt-get install libatlas3-base
       
 ### Kaldi ###
 
@@ -169,7 +169,7 @@ default python on your system.
 ### Pynini ###
 
 Pynini and OpenFst's Python wrapper are needed for some postprocessing steps. The following
-ugly command line should take care of this:
+ugly command line should take care of this (run as root):
 
     apt-get install -y python3-setuptools && \
     cd /tmp && \
@@ -199,10 +199,10 @@ add to `.bashrc`:
 ### Et-G2P
 
 The Estonian FST-based grapheme-to-phoneme converter is needed for post-processing.
-Available at https://github.com/alumae/et-g2p-fst. Just clone it to a directory
-one level up from kaldi-offline-transcriber:
+Available at https://github.com/alumae/et-g2p-fst. Just clone it to a directory, e.g. to
+`/home/speech/tools/et-g2p-fst`
 
-    cd ..
+    cd /home/speech/tools
     git clone https://github.com/alumae/et-g2p-fst.git
 
 ### Keras and Tensorflow ###
@@ -231,9 +231,11 @@ Download and unpack the Estonian acoustic and language models:
     cd /home/speech/tools/kaldi-offline-transcriber
     curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-07.tgz  | tar xvz 
 
-Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
+Create a file `Makefile.options` and set the `KALDI_ROOT` and `ET_G2P_FST` path to where they are installed:
 
     KALDI_ROOT=/home/speech/tools/kaldi-trunk
+    ET_G2P_FST=/home/speech/tools/et-g2p-fst
+
 
 Run this once:
 
