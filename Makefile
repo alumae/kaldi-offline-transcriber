@@ -223,7 +223,7 @@ build/trans/%/wav.scp:
 	echo "$* build/audio/base/$*.wav" > $@
 
 build/trans/%/reco2file_and_channel:
-	echo "$* $* 1" > $@
+	echo "$* $* A" > $@
 
 build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build/trans/%/reco2file_and_channel
 	cat build/diarization/$*/show.seg | cut -f 3,4,8 -d " " | \
@@ -234,7 +234,6 @@ build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build
 		echo $*-$${sp_id}---$${start}-$${end} $* $$start $$end; \
 	done > $@
 	
-
 build/trans/%/utt2spk: build/trans/%/segments
 	cat $^ | perl -npe 's/\s+.*//; s/((.*)---.*)/\1 \2/' > $@
 

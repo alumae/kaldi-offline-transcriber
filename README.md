@@ -2,6 +2,12 @@
 
 ## Updates ##
 
+### 2018-08-08 ###
+  * Some refactorings, and new models, and RNNLM rescoring.
+    Also, now uses a decoding with special unknkwon word handling,
+    which makes it possible to produce words not in the LM is the final output. Details
+    will be added later.
+  
 ### 2017-05-29 ###
   * Replaced Kaldi-based speaker ID with a custom DNN-based implementation. Requires Keras 1.2.
 
@@ -76,9 +82,10 @@ with Kaldi.
 
 The system performs:
   * Speech/non-speech detection, speech segmentation, speaker diarization (using the LIUMSpkDiarization package, http://lium3.univ-lemans.fr/diarization)
-  * Two-pass decoding
+  * Three-pass decoding
     - With Kaldi's so-called chain TDNN acoustic models that use i-vectors for speaker adaptation
     - Rescoring with a larger language model
+    - Rescoring with a recurrent neural network language model
   * Finally, the recognized words are reconstructed into compound words (i.e., decoding is done using de-compounded words).
     This is the only part that is specific to Estonian.
 
@@ -131,7 +138,7 @@ Install the ATLAS matrix algebra library. On Ubuntu/Debian (as root):
       
 ### Kaldi ###
 
-IMPORTANT: The system works agains Kaldi trunk as of 2017-02-01. The system
+IMPORTANT: The system works agains Kaldi trunk as of 2018-08-01. The system
 may not work with Kaldi revisions that are a lot (months) older or newer than that.
 
 Install and compile e.g. under `/home/speech/tools`. Follow instructions at
@@ -152,21 +159,51 @@ install guide for details):
     make -j 4
 
 
-### Python  ###
+### Python 3 ###
 
-Install python (at least 2.7), using your OS tools (e.g., `apt-get`). 
-Make sure `pip` is installed (`apt-get install python-pip`).
+Install python (at least 3.5), using your OS tools (e.g., `apt-get`). 
+Make sure `pip` is installed (`apt-get install python-pip3`). Python 3 should be set as the 
+default python on your system.
 
 
-### OpenFst's Python extension ###
+### Pynini ###
 
-OpenFst's Python wrapper (http://www.openfst.org/twiki/bin/view/FST/PythonExtension) 
-is needed for reconstructing compound words. This package
-itself needs OpenFst shared libararies, that we already built when installing Kaldi.
-To install OpenFst's Python extension and make it use the Kaldi's OpenFst libraries, install
-it like that (as root):
+Pynini and OpenFst's Python wrapper are needed for some postprocessing steps. The following
+ugly command line should take care of this:
 
-    CPPFLAGS="-I/home/speech/tools/kaldi-trunk/tools/openfst/include -L/home/speech/tools/kaldi-trunk/tools/openfst/lib" pip install openfst
+    apt-get install -y python3-setuptools && \
+    cd /tmp && \
+    git clone https://github.com/google/re2 && \
+    cd /tmp/re2 && \
+    make -j4 && \
+    make install && \
+    cd /tmp && \
+    wget http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.6.9.tar.gz && \
+    tar zxvf openfst-1.6.9.tar.gz && \
+    cd openfst-1.6.9 && \
+    ./configure --enable-grm && \
+    make -j8 && \
+    make install && \
+    cd /tmp && \
+    wget http://www.opengrm.org/twiki/pub/GRM/PyniniDownload/pynini-2.0.0.tar.gz && \
+    tar zxvf pynini-2.0.0.tar.gz && \
+    cd pynini-2.0.0 && \
+    python setup.py install && \
+    rm -rf /tmp/re2 /tmp/openfst-1.6.9.tar.gz /tmp/pynini-2.0.0.tar.gz /tmp/openfst-1.6.9 /tmp/pynini-2.0.0
+
+You might also need to include /usr/local/lib to LD_LIBRARY_PATH evironment variable. To do this,
+add to `.bashrc`:
+
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+### Et-G2P
+
+The Estonian FST-based grapheme-to-phoneme converter is needed for post-processing.
+Available at https://github.com/alumae/et-g2p-fst. Just clone it to a directory
+one level up from kaldi-offline-transcriber:
+
+    cd ..
+    git clone https://github.com/alumae/et-g2p-fst.git
 
 ### Keras and Tensorflow ###
 
@@ -192,7 +229,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-05-29.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-07.tgz  | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` path to where it's installed:
 
@@ -232,7 +269,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2017-05-29.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-07.tgz | tar xvz 
 
 Initialize the new models:
 
@@ -261,10 +298,10 @@ Also demos automatic punctuation (not yet publicly available):
     # head -5 build/output/intervjuu201306211256.txt
     
     Palgainfoagentuur koostöös CV-Online'i ja teiste partneritega viis kevadel läbi tööandjate ja töötajate palgauuringu. Meil on telefonil nüüd palgainfoagentuuri juht Kadri Seeder. Tervist.
-    Kui laiapõhjaline, see uuring oli, ma saan aru, et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
-    Jah, me seekord viis uuringu läbi ka Lätis ja Leedus ja, ja see on täpselt samasuguse metoodika.
-    Aga nii, et me saame võrrelda Läti ja Leedu andmeid, seda küll mitte täna, sellepärast et Läti-Leedu tööandjatele ankeete lõpetavad. Täna vaatasime töötajate tööotsijate uuringus väga põgusalt, siis need tulemused tulevad juuli käigus.
-    Aga kui rääkida tänasest küsitlusest, siis tee pöörasid tähelepanu sellele, kui täpsemalt rääkisite sellest, millised on toimunud ja prognoositavad muutused põhipalkade ja nende põhjused, kas saaksite meile ka sellest rääkida.
+    Kui laiapõhjaline see uuring oli, ma saan aru, et ei ole kaasatud ainult Eesti tööandjad ja töötajad.
+    Jah, me seekord viisime uuringu läbi ka Lätis ja Leedus ja, ja see on täpselt samasuguse metoodikaga, nii et me saame võrrelda Läti ja Leedu andmeid, seda küll veel mitte täna sellepärast et Läti-Leedu tööandjatel ankeete lõpetavad.
+    Täna vaatasime töötajate tööotsijate uuringus väga põgusalt sisse, et need tulemused tulevad. Juuli käigus
+    aga kui rääkida tänasest esitlusest, siis tee pöörasid tähelepanu sellele, kui täpsemalt rääkisite sellest, millised on toimunud ja prognoositavad muutused põhipalkades ja nende põhjused, kas saaksite meile ka sellest rääkida.
 
 
 Note that in the `.txt` file, all recognized sentences are title-cased and end with a '.'.
