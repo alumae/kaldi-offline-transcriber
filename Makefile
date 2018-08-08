@@ -47,7 +47,7 @@ ACOUSTIC_MODEL?=tdnn_7d_online
 # Vocabulary in dict format (no pronouncation probs for now)
 VOCAB?=language_model/vestlused-dev.splitw2.with_long.dict
 
-ET_G2P_FST?=/home/tanel/remote/bell/home/tanel/devel/et-g2p-fst
+ET_G2P_FST?=../et-g2p-fst
 
 LM_SCALE?=10
 
@@ -85,8 +85,7 @@ export
 	ln -s $(KALDI_ROOT)/scripts/rnnlm
 	mkdir -p src-audio
 
-.lang: build/fst/data/prunedlm_unk build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/fst/data/largelm_unk build/fst/data/compounderlm
-
+.lang: build/fst/data/prunedlm_unk build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/fst/data/largelm_unk build/fst/data/rnnlm_unk build/fst/data/compounderlm
 
 build/fst/$(ACOUSTIC_MODEL)/final.mdl:
 	rm -rf `dirname $@`
@@ -97,27 +96,30 @@ build/fst/$(ACOUSTIC_MODEL)/final.mdl:
 		echo "--norm-means=false --norm-vars=false" > build/fst/$(ACOUSTIC_MODEL)/cmvn_opts; \
 	fi
 
-
-# Convert dict and LM to FST format
-build/fst/data/dict build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB) build/fst/$(ACOUSTIC_MODEL)/final.mdl
-	rm -rf build/fst/data/dict build/fst/data/prunedlm
-	mkdir -p build/fst/data/dict build/fst/data/prunedlm
+build/fst/data/dict/.done: $(VOCAB) build/fst/$(ACOUSTIC_MODEL)/final.mdl
+	rm -rf build/fst/data/dict
+	mkdir -p build/fst/data/dict
 	cp -r $(THIS_DIR)/kaldi-data/dict/* build/fst/data/dict
 	rm -f build/fst/data/dict/lexicon.txt build/fst/data/dict/lexiconp.txt
 	cat models/etc/filler16k.dict | egrep -v "^<.?s>"   > build/fst/data/dict/lexicon.txt
 	cat $(VOCAB) | perl -npe 's/\(\d\)(\s)/\1/' >> build/fst/data/dict/lexicon.txt
+	touch -m $@
+
+build/fst/data/prunedlm: $(PRUNED_LM) $(VOCAB) build/fst/$(ACOUSTIC_MODEL)/final.mdl build/fst/data/dict/.done
+	rm -rf build/fst/data/prunedlm
+	mkdir -p build/fst/data/prunedlm
 	utils/prepare_lang.sh --phone-symbol-table build/fst/$(ACOUSTIC_MODEL)/phones.txt build/fst/data/dict '<unk>' build/fst/data/dict/tmp build/fst/data/prunedlm
 	gunzip -c $(PRUNED_LM) | arpa2fst --disambig-symbol=#0 \
-		--read-symbol-table=build/fst/data/prunedlm/words.txt  -  build/fst/data/prunedlm/G.fst
-	echo  "Checking how stochastic G is (the first of these numbers should be small):"
+		--read-symbol-table=build/fst/data/prunedlm/words.txt - build/fst/data/prunedlm/G.fst
+	echo "Checking how stochastic G is (the first of these numbers should be small):"
 	fstisstochastic build/fst/data/prunedlm/G.fst || echo "not stochastic (probably OK)"	
 	utils/validate_lang.pl build/fst/data/prunedlm || exit 1
 
-build/fst/data/unk_lang_model: build/fst/data/dict
+build/fst/data/unk_lang_model: build/fst/data/dict/.done
 	rm -rf $@
 	utils/lang/make_unk_lm.sh build/fst/data/dict $@
 
-build/fst/data/prunedlm_unk: build/fst/data/unk_lang_model
+build/fst/data/prunedlm_unk: build/fst/data/unk_lang_model build/fst/data/prunedlm
 	rm -rf $@
 	utils/prepare_lang.sh --unk-fst build/fst/data/unk_lang_model/unk_fst.txt build/fst/data/dict "<unk>" build/fst/data/prunedlm $@
 	cp build/fst/data/prunedlm/G.fst $@
@@ -216,37 +218,24 @@ build/diarization/%/show.seg: build/audio/base/%.wav
 	if [ $(DO_MUSIC_DETECTION) = yes ]; then diarization_opts="-m"; fi; \
 	./scripts/diarization.sh $$diarization_opts $^ `dirname $@`/show.uem.seg
 
+build/trans/%/wav.scp:
+	mkdir -p build/trans/$*
+	echo "$* build/audio/base/$*.wav" > $@
 
-build/audio/segmented/%: build/diarization/%/show.seg
-	rm -rf $@
-	mkdir -p $@
-	cat $^ | cut -f 3,4,8 -d " " | \
+build/trans/%/reco2file_and_channel:
+	echo "$* $* 1" > $@
+
+build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build/trans/%/reco2file_and_channel
+	cat build/diarization/$*/show.seg | cut -f 3,4,8 -d " " | \
 	while read LINE ; do \
-		start=`echo $$LINE | cut -f 1 -d " " | perl -npe '$$_=$$_/100.0'`; \
-		len=`echo $$LINE | cut -f 2 -d " " | perl -npe '$$_=$$_/100.0'`; \
+		start=`echo $$LINE | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; printf("%08.3f", $$start);'`; \
+		end=`echo $$LINE   | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; $$len=$$t[1]/100.0; $$end=$$start+$$len; printf("%08.3f", $$end);'`; \
 		sp_id=`echo $$LINE | cut -f 3 -d " "`; \
-		timeformatted=`echo "$$start $$len" | perl -ne '@t=split(); $$start=$$t[0]; $$len=$$t[1]; $$end=$$start+$$len; printf("%08.3f-%08.3f\n", $$start,$$end);'` ; \
-		sox build/audio/base/$*.wav --norm $@/$*_$${timeformatted}_$${sp_id}.wav trim $$start $$len ; \
-	done
+		echo $*-$${sp_id}---$${start}-$${end} $* $$start $$end; \
+	done > $@
+	
 
-build/audio/segmented/%: build/diarization/%/show.seg
-	rm -rf $@
-	mkdir -p $@
-	cat $^ | cut -f 3,4,8 -d " " | \
-	while read LINE ; do \
-		start=`echo $$LINE | cut -f 1 -d " " | perl -npe '$$_=$$_/100.0'`; \
-		len=`echo $$LINE | cut -f 2 -d " " | perl -npe '$$_=$$_/100.0'`; \
-		sp_id=`echo $$LINE | cut -f 3 -d " "`; \
-		timeformatted=`echo "$$start $$len" | perl -ne '@t=split(); $$start=$$t[0]; $$len=$$t[1]; $$end=$$start+$$len; printf("%08.3f-%08.3f\n", $$start,$$end);'` ; \
-		sox build/audio/base/$*.wav --norm $@/$*_$${timeformatted}_$${sp_id}.wav trim $$start $$len ; \
-	done
-
-build/trans/%/wav.scp: build/audio/segmented/%
-	mkdir -p `dirname $@`
-	/bin/ls $</*.wav  | \
-		perl -npe 'chomp; $$orig=$$_; s/.*\/(.*)_(\d+\.\d+-\d+\.\d+)_(S\d+)\.wav/\1-\3---\2/; $$_=$$_ .  " $$orig\n";' | LC_ALL=C sort > $@
-
-build/trans/%/utt2spk: build/trans/%/wav.scp
+build/trans/%/utt2spk: build/trans/%/segments
 	cat $^ | perl -npe 's/\s+.*//; s/((.*)---.*)/\1 \2/' > $@
 
 build/trans/%/spk2utt: build/trans/%/utt2spk
@@ -261,13 +250,18 @@ build/trans/%/mfcc: build/trans/%/spk2utt build/fst/$(ACOUSTIC_MODEL)/final.mdl
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	utils/fix_data_dir.sh build/trans/$*
+	# Touch files that utils/fix_data_dir.sh might modify, in the right order
+	# so that make will not try to remake them
+	touch -m build/trans/$*/wav.scp
+	touch -m build/trans/$*/segments
+	touch -m build/trans/$*/utt2spk
+	touch -m build/trans/$*/spk2utt
 	touch -m $@
 
 build/trans/%/ivectors: build/trans/%/mfcc
 	rm -rf $@	
 	steps/online/nnet2/extract_ivectors_online.sh --cmd "$$decode_cmd" --nj $(njobs) \
 		build/trans/$* build/fst/$(ACOUSTIC_MODEL)/ivector_extractor $@ || exit 1;
-
 
 ### Do 1-pass decoding using chain online models
 build/trans/%/$(ACOUSTIC_MODEL)_pruned_unk/decode/log: build/fst/$(ACOUSTIC_MODEL)/final.mdl build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/trans/%/spk2utt build/trans/%/mfcc build/trans/%/ivectors
@@ -323,7 +317,7 @@ build/trans/%/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/decode/log: build
 	  factor=`cat $*_unk/frame_subsampling_factor`; \
 	  frame_shift_opt="--frame-shift 0.0$$factor"; \
 	fi; \
-	$(THIS_DIR)/local/get_ctm_unk.sh $$frame_shift_opt \
+	$(THIS_DIR)/local/get_ctm_unk.sh --use_segments false $$frame_shift_opt \
 	  --unk-p2g-cmd "python3 $(THIS_DIR)/local/unk_p2g.py --p2g-cmd 'python3 $(ET_G2P_FST)/g2p.py --inverse --fst  $(ET_G2P_FST)/data/chars.fst --nbest 1'" \
 	  --unk-word '<unk>' \
 	  --min-lmwt $(LM_SCALE) \
@@ -337,8 +331,8 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat build/trans/$*/decode/score_$(LM_SCALE)/`dirname $*`.ctm  | perl -npe 's/(.*)-(S\d+)---(\S+)/\1_\3_\2/' > $@
 
 %.with-compounds.ctm: %.splitw2.ctm build/fst/data/compounderlm	
-	python2.7 scripts/compound-ctm.py \
-		"python2.7 scripts/compounder.py build/fst/data/compounderlm/G.fst build/fst/data/compounderlm/words.txt" \
+	python3 scripts/compound-ctm.py \
+		"python3 scripts/compounder.py build/fst/data/compounderlm/G.fst build/fst/data/compounderlm/words.txt" \
 		< $*.splitw2.ctm > $@
 
 %.segmented.ctm: %.segmented.with-compounds.ctm
