@@ -204,6 +204,11 @@ Available at https://github.com/alumae/et-g2p-fst. Just clone it to a directory,
 
     cd /home/speech/tools
     git clone https://github.com/alumae/et-g2p-fst.git
+    
+Test it (using phoneme-tographeme conversion):
+
+    $ echo "muška" | python3 g2p.py --inverse --fst data/chars.fst --nbest 1
+    muška Muška 18.6946869
 
 ### Keras and Tensorflow ###
 
