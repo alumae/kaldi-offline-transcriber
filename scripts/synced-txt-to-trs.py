@@ -227,7 +227,7 @@ if __name__ == '__main__':
           content.append(titlecase(word))
         else:
           content.append(word)
-        do_uppercase = word.endswith(".")
+        do_uppercase = word.endswith(".") or word.endswith("?")
           
   
   sections.sort(key=lambda turns: turns[1][0][1][0][0])  
