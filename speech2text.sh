@@ -23,7 +23,6 @@ if [ $# -ne 1 ]; then
   echo "  --ctm <ctm-file>      # Put the result in CTM file (one line pwer word with timing information)"
   echo "  --sbv <sbv-file>      # Put the result in SBV file (subtitles for e.g. YouTube)"
   echo "  --clean (true|false)  # Delete intermediate files generated during decoding (true by default)"
-  echo "  --nnet2-online (true|false) # Use one-pass decoding using online nnet2 models. 3 times faster (true by default)."
   exit 1;
 fi
 
@@ -38,12 +37,8 @@ cp -u $1 $BASEDIR/src-audio
 filename=$(basename "$1")
 basename="${filename%.*}"
 
-nnet2_online_arg="DO_NNET2_ONLINE=no"
-if $nnet2_online; then
-  nnet2_online_arg="DO_NNET2_ONLINE=yes"
-fi
 
-(cd $BASEDIR; make $nthreads_arg $nnet2_online_arg build/output/$basename.{txt,trs,ctm,sbv} || exit 1; if $clean ; then make .$basename.clean; fi)
+(cd $BASEDIR; make $nthreads_arg build/output/$basename.{txt,trs,ctm,sbv} || exit 1; if $clean ; then make .$basename.clean; fi)
 
 echo "Finished transcribing, result is in files $BASEDIR/build/output/${basename%.*}.{txt,trs,ctm,sbv}"
 
