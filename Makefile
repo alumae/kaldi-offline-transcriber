@@ -8,7 +8,7 @@ DO_MUSIC_DETECTION?=yes
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
 DO_SPEAKER_ID?=no
-SID_POSTERIOR_THRESHOLD?=0.5
+SID_SIMILARITY_THRESHOLD?=10
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
@@ -428,8 +428,14 @@ build/sid/%/spk2utt : build/trans/%/spk2utt
 	mkdir -p `dirname $@`
 	rm -f $@
 	ln $^ $@
+
+build/sid/%/segments : build/trans/%/segments
+	mkdir -p `dirname $@`
+	rm -f $@
+	ln $^ $@
+
 	
-build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt
+build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt build/sid/%/segments
 	rm -rf $@
 	rm -f build/sid/$*/vad.scp
 	rm -f build/sid/$*/cmvn.scp
@@ -443,20 +449,24 @@ build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt
 build/sid/%/ivectors: build/sid/%/mfcc
 	rm -rf build/sid/$*/ivectors
 	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) \
-		$(THIS_DIR)/kaldi-data/extractor_2048 build/sid/$* $@
+		$(THIS_DIR)/kaldi-data/sid/extractor_2048 build/sid/$* $@
 
+# cross-product between trained speakers and diarized speakers
+build/sid/%/trials: build/sid/%/ivectors
+	join -j 2 \
+		<(cut -d " " -f 1 kaldi-data/sid/name_ivector.scp | sort ) \
+		<(cut -d " " -f 1 build/sid/$*/ivectors/spk_ivector.scp | sort ) > $@
+  
+build/sid/%/lda_plda_scores: build/sid/%/trials
+	ivector-plda-scoring --normalize-length=true \
+		"ivector-copy-plda --smoothing=0.3 kaldi-data/sid/lda_plda - |" \
+	  "ark:ivector-subtract-global-mean scp:kaldi-data/sid//name_ivector.scp ark:- | transform-vec kaldi-data/sid/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+	  "ark:ivector-subtract-global-mean kaldi-data/sid/mean.vec scp:build/sid/$*/ivectors/spk_ivector.scp ark:- | transform-vec kaldi-data/sid/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+	  build/sid/$*/trials $@
 
-build/sid/%/sid-posteriors.txt: build/sid/%/ivectors
-	copy-vector scp:build/sid/$*/ivectors/spk_ivector.scp ark,t:- | \
-	  perl -npe 's/ \]//; s/ \[//; s/ +/,/g' > build/sid/$*/ivectors/spk_ivector.csv
-	python local/sid/apply_dnn.py $(THIS_DIR)/kaldi-data/sid.h5 build/sid/$*/ivectors/spk_ivector.csv > $@
-
-# pick speakers above the threshold
-build/sid/%/sid-result.txt: build/sid/%/sid-posteriors.txt
-	cat build/sid/$*/sid-posteriors.txt | \
-	awk '{if ($$2 > $(SID_POSTERIOR_THRESHOLD) && $$3 != "<unk>") print $$0}' | \
-  cut -f 1,3- -d " " |  perl -npe 's/^\S+-(S\d+)/\1/;' > $@
-
+build/sid/%/sid-result.txt: build/sid/%/lda_plda_scores
+	cat build/sid/$*/lda_plda_scores | sort -k2,2 -k3,3nr | awk '{print $$3, $$1, $$2}' | uniq -f2 | awk '{if ($$1 > $(SID_SIMILARITY_THRESHOLD)) {print $$3, $$2}}' | \
+	perl -npe 's/^\S+-(S\d+)/\1/; s/_/ /g;' > $@
 
 
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean

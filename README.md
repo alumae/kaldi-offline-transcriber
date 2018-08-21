@@ -2,6 +2,10 @@
 
 ## Updates ##
 
+### 2018-08-21 ###
+  * Changed the speaker ID system to use Kaldi's native i-vector scoring. That means that Tensorflow
+    and Keras are no longer needed for doing speaker identification.
+
 ### 2018-08-08 ###
   * Some refactorings, and new models, and RNNLM rescoring.
     Also, now uses a decoding with special unknkwon word handling,
@@ -205,24 +209,11 @@ Available at https://github.com/alumae/et-g2p-fst. Just clone it to a directory,
     cd /home/speech/tools
     git clone https://github.com/alumae/et-g2p-fst.git
     
-Test it (using phoneme-tographeme conversion):
+Test it (using phoneme-to-grapheme conversion):
 
     $ echo "muška" | python3 g2p.py --inverse --fst data/chars.fst --nbest 1
     muška Muška 18.6946869
-
-### Keras and Tensorflow ###
-
-Speaker ID system rquires Keras 1.2 and Tensorflow. To install:
-
-    pip install keras==1.2
-    pip install tensorflow
-    
-Note that this is only needed if you really need speaker ID. You can turn speaker ID off
-using the following line in `Makefile.options`:
-
-
-    DO_SPEAKER_ID=no
-    
+   
     
 ### This package ###
 
@@ -234,7 +225,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-07.tgz  | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-21.tgz  | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` and `ET_G2P_FST` path to where they are installed:
 
@@ -276,7 +267,7 @@ Remove old `build`, `kaldi-data` and `language_model` directories:
   
 Get new Estonian models:
 
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-07.tgz | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-21.tgz | tar xvz 
 
 Initialize the new models:
 
