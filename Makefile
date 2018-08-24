@@ -122,8 +122,7 @@ build/fst/data/unk_lang_model: build/fst/data/dict/.done
 build/fst/data/prunedlm_unk: build/fst/data/unk_lang_model build/fst/data/prunedlm
 	rm -rf $@
 	utils/prepare_lang.sh --unk-fst build/fst/data/unk_lang_model/unk_fst.txt build/fst/data/dict "<unk>" build/fst/data/prunedlm $@
-	cp build/fst/data/prunedlm/G.fst $@
-	rm -rf build/fst/data/prunedlm_unk/tmp
+	cp build/fst/data/prunedlm/G.fst $@	
 	
 build/fst/%/graph_prunedlm_unk: build/fst/data/prunedlm_unk build/fst/%/final.mdl
 	rm -rf $@
@@ -135,6 +134,8 @@ build/fst/%/graph_prunedlm_unk: build/fst/data/prunedlm_unk build/fst/%/final.md
 	  fi; \
 	fi; \
 	utils/mkgraph.sh $$self_loop_scale_arg build/fst/data/prunedlm_unk build/fst/$* $@
+	rm -rf build/fst/data/prunedlm_unk/tmp
+	touch -m $@
 
 build/fst/data/largelm_unk: build/fst/data/prunedlm
 	rm -rf $@
