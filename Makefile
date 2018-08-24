@@ -123,6 +123,7 @@ build/fst/data/prunedlm_unk: build/fst/data/unk_lang_model build/fst/data/pruned
 	rm -rf $@
 	utils/prepare_lang.sh --unk-fst build/fst/data/unk_lang_model/unk_fst.txt build/fst/data/dict "<unk>" build/fst/data/prunedlm $@
 	cp build/fst/data/prunedlm/G.fst $@
+	rm -rf build/fst/data/prunedlm_unk/tmp
 	
 build/fst/%/graph_prunedlm_unk: build/fst/data/prunedlm_unk build/fst/%/final.mdl
 	rm -rf $@
