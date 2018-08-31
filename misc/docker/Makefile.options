@@ -1,0 +1,3 @@
+KALDI_ROOT?=/opt/kaldi
+ET_G2P_FST=/opt/et-g2p-fst
+DO_SPEAKER_ID?=yes

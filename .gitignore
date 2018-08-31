@@ -5,5 +5,5 @@ src-audio
 steps
 utils
 sid
-Makefile.options
+./Makefile.options
 rnnlm
