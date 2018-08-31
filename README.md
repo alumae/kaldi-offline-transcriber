@@ -2,6 +2,10 @@
 
 ## Updates ##
 
+### 2018-08-31 ###
+  * Added a Dockerfile for building a Docker image with Estonian models,
+    a pre-built image is also available, see [here](misc/docker).
+
 ### 2018-08-21 ###
   * Changed the speaker ID system to use Kaldi's native i-vector scoring. That means that Tensorflow
     and Keras are no longer needed for doing speaker identification.
