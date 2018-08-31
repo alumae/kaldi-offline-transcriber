@@ -24,7 +24,8 @@ Start ta container (name is "speech2test") and put it into background (`-d`). Al
 directory `~/tmp/speechfiles` as the container directory `/opt/speechfiles`.
   
     mkdir -p ~/tmp/speechfiles
-    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t kaldi-offline-transcriber-et
+    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t cloud.canister.io:5000/alumae/kaldi-offline-transcriber-et
+
   
   
 In order to transcribe a file, you have to place it to `~/tmp/speechfiles` in your host machine
