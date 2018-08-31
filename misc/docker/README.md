@@ -12,19 +12,19 @@ the reason why I couln't push the image to Docker Hub.
 Unfortunately it seems that canister.io doesn't allow public repositories. Therefore,
 in order to pull the image, you first have to login to canister.io using my "deploy key":
 
-  docker login --username=deploy+alumae --password=b56047eb6701b59526e81b3c cloud.canister.io:5000
+    docker login --username=deploy+alumae --password=b56047eb6701b59526e81b3c cloud.canister.io:5000
   
 Then you can pull the image:
 
-  docker pull cloud.canister.io:5000/alumae/kaldi-offline-transcriber-et
+    docker pull cloud.canister.io:5000/alumae/kaldi-offline-transcriber-et
 
 ## Usage
 
 Start ta container (name is "speech2test") and put it into background (`-d`). Also, mount a local
 directory `~/tmp/speechfiles` as the container directory `/opt/speechfiles`.
   
-	mkdir -p ~/tmp/speechfiles
-	docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t kaldi-offline-transcriber-et
+    mkdir -p ~/tmp/speechfiles
+    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t kaldi-offline-transcriber-et
   
   
 In order to transcribe a file, you have to place it to `~/tmp/speechfiles` in your host machine
