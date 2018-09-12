@@ -66,12 +66,12 @@ ENV LANG en_US.UTF-8
     
 RUN apt-get install -y openjdk-8-jre-headless
 
-RUN echo 2 > /dev/null && \
+RUN echo 3 > /dev/null && \
     git clone https://github.com/alumae/kaldi-offline-transcriber.git
 COPY Makefile.options /opt/kaldi-offline-transcriber/Makefile.options
 
 RUN cd /opt/kaldi-offline-transcriber && \
-    wget -q -O - http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-21.tgz | tar xvz
+    wget -q -O - http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-09-12.tgz | tar xvz
 
 RUN cd /opt/kaldi/tools && \
     extras/install_pocolm.sh

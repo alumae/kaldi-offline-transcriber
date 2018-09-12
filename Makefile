@@ -8,7 +8,7 @@ DO_MUSIC_DETECTION?=yes
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
 DO_SPEAKER_ID?=no
-SID_SIMILARITY_THRESHOLD?=10
+SID_SIMILARITY_THRESHOLD?=13
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
