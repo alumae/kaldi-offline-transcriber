@@ -9,7 +9,7 @@ Speaker identification models are built for persons who often appear in Estonian
 The prebuilt image is available on Google Cloud. The image is 9.35 GB, which might be
 the reason why I couln't push the image to Docker Hub. 
  
-Then you can pull the image:
+You can pull the image:
 
     docker pull eu.gcr.io/speech2text-218910/kaldi-offline-transcriber-et:latest
 
