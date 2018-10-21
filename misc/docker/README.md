@@ -6,17 +6,12 @@ Speaker identification models are built for persons who often appear in Estonian
 
 ## Installation
 
-The prebuilt image is available on http://canister.io. The image is 9.35 GB, which might be
+The prebuilt image is available on Google Cloud. The image is 9.35 GB, which might be
 the reason why I couln't push the image to Docker Hub. 
+ 
+You can pull the image:
 
-Unfortunately it seems that canister.io doesn't allow public repositories. Therefore,
-in order to pull the image, you first have to login to canister.io using my "deploy key":
-
-    docker login --username=deploy+alumae --password=b56047eb6701b59526e81b3c cloud.canister.io:5000
-  
-Then you can pull the image:
-
-    docker pull cloud.canister.io:5000/alumae/kaldi-offline-transcriber-et
+    docker pull eu.gcr.io/speech2text-218910/kaldi-offline-transcriber-et:latest
 
 ## Usage
 
@@ -24,7 +19,7 @@ Start ta container (name is "speech2test") and put it into background (`-d`). Al
 directory `~/tmp/speechfiles` as the container directory `/opt/speechfiles`.
   
     mkdir -p ~/tmp/speechfiles
-    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t cloud.canister.io:5000/alumae/kaldi-offline-transcriber-et
+    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t eu.gcr.io/speech2text-218910/kaldi-offline-transcriber-et:latest
 
   
   
