@@ -16,32 +16,19 @@ def make_sentence_fsa(syms, word_ids):
   assert(start_state == 0)
   t.set_start(start_state)
   i = 0
-  space_id = syms["<space>"]
   for word_id in word_ids:
     if i > 0:
       new_state = t.add_state()
       assert(new_state == i+1)
-      t.add_arc(i, fst.Arc(space_id, space_id, 1, i+1))
+      t.add_arc(i, fst.Arc(syms["<eps>"], syms["<eps>"], 1, i+1))
+      t.add_arc(i, fst.Arc(syms["+C+"], syms["+C+"], 1, i+1))
+      t.add_arc(i, fst.Arc(syms["+D+"], syms["+D+"], 1, i+1))
       i += 1
     t.add_state()
     t.add_arc(i, fst.Arc(word_id, word_id, 1, i+1))
     i+=1
   t.set_final(i, 1)
   return t
-
-def make_compounder(syms, word_ids):
-  c = fst.Fst()
-  start_state = c.add_state()
-  assert(start_state == 0)
-  c.set_start(start_state)
-  space_id = syms["<space>"]
-  c.add_arc(0, fst.Arc(space_id, syms["<eps>"], 1, 0))
-  c.add_arc(0, fst.Arc(space_id, syms["+C+"], 1, 0))
-  c.add_arc(0, fst.Arc(space_id, syms["+D+"], 1, 0))
-  for word_id in word_ids:
-    c.add_arc(0, fst.Arc(word_id, word_id, 1, 0))
-  c.set_final(0, 1)
-  return c
 
 
 if __name__ == '__main__':
@@ -73,11 +60,11 @@ if __name__ == '__main__':
   
   
     sentence = make_sentence_fsa(syms, word_ids)
-    compound = make_compounder(syms, word_ids)
-    composed = fst.compose(sentence, compound)
-    composed2 = fst.compose(composed, g)
+    sentence.arcsort(sort_type="olabel")
     
-    alignment = fst.shortestpath(composed2)
+    composed = fst.compose(sentence, g)
+
+    alignment = fst.shortestpath(composed)
     alignment.rmepsilon()
     alignment.topsort()
         

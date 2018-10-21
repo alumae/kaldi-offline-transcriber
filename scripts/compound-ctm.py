@@ -17,14 +17,14 @@ def process_sentence(proc, sent):
         if sent[-1][2] == "</s>":
             sent.pop()
         
-        text = "<s> " + " ".join([ww[2] for ww in sent]) + " </s>\n"
+        text = " ".join([ww[2] for ww in sent]) + "\n"
         #print "before: ", text
         
         proc.stdin.write(text.encode('utf-8'))
         proc.stdin.flush()
         text = proc.stdout.readline().decode('utf-8')
         #print "after:  ", text
-        words = text.split()[1:-1]
+        words = text.split()
         if len(words) == 0:
             return
         if words[0] in ["+C+", "+D+"]:
@@ -63,7 +63,7 @@ def process_sentence(proc, sent):
             result.append((new_start,new_dur,new_word, new_id))
         
         for r in result:
-            print(r[3].replace("-", "_"), "1", r[0], r[1], r[2])
+            print("%s 1 %0.3f %0.3f %s" % (r[3].replace("-", "_"), r[0], r[1], r[2]))
         
 
 if __name__ == '__main__':

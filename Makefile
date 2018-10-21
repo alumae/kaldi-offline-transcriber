@@ -167,8 +167,7 @@ build/fst/data/compounderlm: $(COMPOUNDER_LM) $(VOCAB)
 		grep -v '<s> <s>' | \
 		grep -v '</s> <s>' | \
 		grep -v '</s> </s>' | \
-		arpa2fst  - | fstprint | \
-		utils/s2eps.pl | fstcompile --isymbols=$@/words.txt --osymbols=$@/words.txt > $@/G.fst 
+		arpa2fst --disambig-symbol='#0' --read-symbol-table=$@/words.txt -  | fstproject --project_output=true | fstarcsort --sort_type=ilabel > $@/G.fst 
 		
 build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 	rm -rf $@
@@ -450,7 +449,7 @@ build/sid/%/mfcc: build/sid/%/wav.scp build/sid/%/utt2spk build/sid/%/spk2utt bu
 # i-vectors for each speaker in our audio file
 build/sid/%/ivectors: build/sid/%/mfcc
 	rm -rf build/sid/$*/ivectors
-	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) \
+	sid/extract_ivectors.sh --cmd "$$decode_cmd" --nj $(njobs) --num-threads $(nthreads) \
 		$(THIS_DIR)/kaldi-data/sid/extractor_2048 build/sid/$* $@
 
 # cross-product between trained speakers and diarized speakers
