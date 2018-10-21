@@ -11,6 +11,7 @@ sbv=""
 srt=""
 with_compounds_ctm=""
 clean=true
+nthreads=1
 
 . $BASEDIR/utils/parse_options.sh || exit 1;
 
@@ -34,6 +35,7 @@ cp -u $1 $BASEDIR/src-audio
 filename=$(basename "$1")
 basename="${filename%.*}"
 
+nthreads_arg="nthreads=${nthreads}"
 
 (cd $BASEDIR; make $nthreads_arg build/output/$basename.{txt,trs,ctm,sbv,srt,with-compounds.ctm} || exit 1; if $clean ; then make .$basename.clean; rm src-audio/$filename; fi)
 
