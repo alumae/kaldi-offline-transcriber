@@ -6,12 +6,11 @@ Speaker identification models are built for persons who often appear in Estonian
 
 ## Installation
 
-The prebuilt image is available on Google Cloud. The image is 9.35 GB, which might be
-the reason why I couln't push the image to Docker Hub. 
+The image is over 9 GB.
  
-You can pull the image:
+You can pull the image by running:
 
-    docker pull eu.gcr.io/speech2text-218910/kaldi-offline-transcriber-et:latest
+    docker pull alumae/kaldi-offline-transcriber-et:latest
 
 ## Usage
 
@@ -19,8 +18,7 @@ Start ta container (name is "speech2test") and put it into background (`-d`). Al
 directory `~/tmp/speechfiles` as the container directory `/opt/speechfiles`.
   
     mkdir -p ~/tmp/speechfiles
-    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t eu.gcr.io/speech2text-218910/kaldi-offline-transcriber-et:latest
-
+    docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t alumae/kaldi-offline-transcriber-et
   
   
 In order to transcribe a file, you have to place it to `~/tmp/speechfiles` in your host machine
