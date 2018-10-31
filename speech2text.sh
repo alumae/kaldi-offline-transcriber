@@ -9,6 +9,7 @@ trs=""
 ctm=""
 sbv=""
 srt=""
+json=""
 with_compounds_ctm=""
 clean=true
 nthreads=1

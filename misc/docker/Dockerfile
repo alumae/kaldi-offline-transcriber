@@ -66,7 +66,7 @@ ENV LANG en_US.UTF-8
     
 RUN apt-get install -y openjdk-8-jre-headless
 
-RUN echo 5 > /dev/null && \
+RUN echo 6 > /dev/null && \
     git clone https://github.com/alumae/kaldi-offline-transcriber.git
 COPY Makefile.options /opt/kaldi-offline-transcriber/Makefile.options
 
@@ -88,9 +88,10 @@ RUN ln -s -f /usr/bin/python2 /usr/bin/python && \
     pip2 install theano --no-deps
 
 # Set up punctuator    
-RUN wget -q -O - http://bark.phon.ioc.ee/tanel/est_punct2.tar.gz | tar xvz && \
-	echo 'DO_PUNCTUATION=yes' >> /opt/kaldi-offline-transcriber/Makefile.options && \
-  echo 'PUNCTUATE_JSON_CMD=(cd punctuator-data/est_punct2/; temp_file1=$$(mktemp); temp_file2=$$(mktemp); cat > $$temp_file1;  python2 punctuator_pad_emb_json.py Model_stage2p_final_563750_h256_lr0.02.pcl $$temp_file1 $$temp_file2 > /dev/stderr; cat $$temp_file2; rm $$temp_file1 $$temp_file2)' >> /opt/kaldi-offline-transcriber/Makefile.options 
+RUN cd /opt/kaldi-offline-transcriber && \
+    wget -q -O - http://bark.phon.ioc.ee/tanel/est_punct2.tar.gz | tar xvz && \
+	  echo 'DO_PUNCTUATION=yes' >> /opt/kaldi-offline-transcriber/Makefile.options && \
+    echo 'PUNCTUATE_JSON_CMD=(cd punctuator-data/est_punct2/; temp_file1=$$(mktemp); temp_file2=$$(mktemp); cat > $$temp_file1;  python2 punctuator_pad_emb_json.py Model_stage2p_final_563750_h256_lr0.02.pcl $$temp_file1 $$temp_file2 > /dev/stderr; cat $$temp_file2; rm $$temp_file1 $$temp_file2)' >> /opt/kaldi-offline-transcriber/Makefile.options 
 
 # Do a final git pull. This is actually not needed if building from scratch
 RUN echo 2 > /dev/null && \
