@@ -40,7 +40,7 @@ def print_sections(sections):
         print(turn["transcript"])
         print('</Turn>')
       print('</Section>')
-    elif section_type == "non_speech":
+    elif section_type == "non-speech":
       print('<Section type="%s" startTime="%0.3f" endTime="%0.3f">' % ("filler", section["start"], section["end"]))
 
 parser = argparse.ArgumentParser("Converts JSON format to Transcriber trs")
