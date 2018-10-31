@@ -54,7 +54,7 @@ LM_SCALE?=10
 DO_PUNCTUATION?=no
 
 ifeq "yes" "$(DO_PUNCTUATION)"
-  PUNCTUATE_SYNC_TXT_CMD?=(cd ~/tools/punctuator/src; python2.7 wrapper.py)
+  PUNCTUATE_JSON_CMD?=cat
   DOT_PUNCTUATED=.punctuated
 endif
 
@@ -226,6 +226,10 @@ build/trans/%/wav.scp:
 build/trans/%/reco2file_and_channel:
 	echo "$* $* A" > $@
 
+# if diarization doesn't find andy speech segments,
+# we generate a 'dummy' short speech segment,
+# so that decoding won't fail
+# this is unfortunately pretty ugly
 build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build/trans/%/reco2file_and_channel
 	cat build/diarization/$*/show.seg | cut -f 3,4,8 -d " " | \
 	while read LINE ; do \
@@ -234,6 +238,9 @@ build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build
 		sp_id=`echo $$LINE | cut -f 3 -d " "`; \
 		echo $*-$${sp_id}---$${start}-$${end} $* $$start $$end; \
 	done > $@
+	if [ ! -s $@ ]; then \
+	  echo "$*-dummy---0.000-0.110 $* 0.0 0.110" > $@; \
+	fi
 	
 build/trans/%/utt2spk: build/trans/%/segments
 	cat $^ | perl -npe 's/\s+.*//; s/((.*)---.*)/\1 \2/' > $@
