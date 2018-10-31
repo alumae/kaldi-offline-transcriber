@@ -2,6 +2,11 @@
 
 ## Updates ##
 
+### 2018-10-31 ###
+  * Introduced a new JSON format for holding all information baout the transcription (speakers, words, timings)
+  * Subtitles are now split to shorter segments
+  * TRS files now contain turns without utterance breaks
+
 ### 2018-09-12 ###
   * Updated speaker ID models
 
