@@ -29,15 +29,11 @@ if __name__ == '__main__':
       score = "1"
       if len(ss) > 5:
           score = ss[5]
-          
-      #if last_segment_id != "" and segment_id != last_segment_id:
-      #  print file_id, "1", float(ss[2]) + start, 0, "<#s>", "1"
-
 
       if segment_id != last_segment_id:
-        print(file_id, "1", float(ss[2]) + start, 0, "<start=%f,end=%f,speaker=%s>" % (start, end, speaker_id), "1")
+        print("%s 1 %0.3f %0.3f %s %s" % (file_id, float(ss[2]) + start, 0, "<start=%f,end=%f,speaker=%s>" % (start, end, speaker_id), "1"))
 
-      print(file_id, "1", float(ss[2]) + start, ss[3], word, score)
+      print("%s 1 %0.3f %0.3f %s %s" % (file_id, float(ss[2]) + start, float(ss[3]), word, score))
       last_segment_id = segment_id
     else:
       print("Cannot parse: ", ss[0], file=sys.stderr)

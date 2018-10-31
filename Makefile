@@ -325,8 +325,6 @@ build/trans/%/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/decode/log: build
 	  `dirname $*` $*_unk/graph $*_unk/decode
 	touch -m $@
 
-
-
 build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat build/trans/$*/decode/score_$(LM_SCALE)/`dirname $*`.ctm  | perl -npe 's/(.*)-(S\d+)---(\S+)/\1_\3_\2/' > $@
 
@@ -336,12 +334,31 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 		< $*.splitw2.ctm > $@
 
 %.segmented.ctm: %.segmented.with-compounds.ctm
-	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' > $@
+	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' | sort -k1,1 -k 3,3g > $@
 
-%.synced.ctm: %.segmented.ctm
-	cat $^ | ./scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
+ifeq "yes" "$(DO_SPEAKER_ID)"
+ifeq "yes" "$(DO_MUSIC_DETECTION)"
+build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.txt  build/diarization/%/show.seg
+	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.txt --pms-seg build/diarization/$*/show.pms.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+else
+build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.txt
+	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.txt build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+endif
+else
+ifeq "yes" "$(DO_MUSIC_DETECTION)"
+build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/diarization/%/show.seg
+	python3 local/segmented_ctm2json.py --pms-seg build/diarization/$*/show.pms.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+else
+build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm 
+	python3 local/segmented_ctm2json.py build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+endif
+endif
+
 
 %.with-compounds.synced.ctm: %.segmented.with-compounds.ctm
+	cat $^ | ./scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
+
+%.synced.ctm: %.segmented.ctm
 	cat $^ | ./scripts/unsegment-ctm.py | LC_ALL=C sort -k 1,1 -k 3,3n -k 4,4n > $@
 	
 %.ctm: %.synced.ctm
@@ -350,44 +367,26 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 %.with-sil.ctm: %.ctm
 	cat $^ | ./scripts/ctm2with-sil-ctm.py > $@
 
-%.punctuated.synced.txt: %.synced.with-sil.ctm
-	cat $^ | cut -f 5 -d " " | perl -npe 's/\n/ /' | $(PUNCTUATE_SYNC_TXT_CMD) > $@
-
-%.synced.txt: %.synced.with-sil.ctm
-	cat $^ | cut -f 5 -d " " | perl -npe 's/\n/ /; s/<sil=\S+>//'  > $@
-
+%.punctuated.json: %.json
+	cat $^ | $(PUNCTUATE_JSON_CMD) > $@
 
 %.hyp: %.segmented.ctm
 	cat $^ | ./scripts/segmented-ctm-to-hyp.py > $@
 
-ifeq "yes" "$(DO_SPEAKER_ID)"
-ifeq "yes" "$(DO_MUSIC_DETECTION)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt build/diarization/%/show.seg
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  --pms build/diarization/$*/show.pms.seg > $@
-else
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/sid/%/sid-result.txt 
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --sid build/sid/$*/sid-result.txt  > $@
-endif	
-else
-ifeq "yes" "$(DO_MUSIC_DETECTION)"
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt build/diarization/%/show.seg
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* --pms build/diarization/$*/show.pms.seg > $@
-else
-build/trans/%/$(FINAL_PASS).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --fid $* > $@
-endif
-endif
+build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).json
+	./local/json2trs.py --fid $* $^ > $@
 
-build/trans/%/$(FINAL_PASS).sbv: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --output-sbv > $@
-
-build/trans/%/$(FINAL_PASS).srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt
-	cat build/trans/$*/$(FINAL_PASS)$(DOT_PUNCTUATED).synced.txt | ./scripts/synced-txt-to-trs.py --output-srt > $@
+%.srt: %.json
+	./local/json2srt.py $^ > $@
 
 %.txt: %.trs
 	cat $^  | grep -v "^<" > $@
 
-build/output/%.trs: build/trans/%/$(FINAL_PASS).trs	
+build/output/%.json: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).json	
+	mkdir -p `dirname $@`
+	cp $^ $@
+
+build/output/%.trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).trs	
 	mkdir -p `dirname $@`
 	cp $^ $@
 
@@ -395,7 +394,7 @@ build/output/%.ctm: build/trans/%/$(FINAL_PASS).ctm
 	mkdir -p `dirname $@`
 	cp $^ $@
 
-build/output/%.txt: build/trans/%/$(FINAL_PASS).txt
+build/output/%.txt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).txt
 	mkdir -p `dirname $@`
 	cp $^ $@
 
@@ -403,11 +402,8 @@ build/output/%.with-compounds.ctm: build/trans/%/$(FINAL_PASS).with-compounds.ct
 	mkdir -p `dirname $@`
 	cp $^ $@
 
-build/output/%.sbv: build/trans/%/$(FINAL_PASS).sbv
-	mkdir -p `dirname $@`
-	cp $^ $@
 
-build/output/%.srt: build/trans/%/$(FINAL_PASS).srt
+build/output/%.srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).srt
 	mkdir -p `dirname $@`
 	cp $^ $@
 
@@ -476,4 +472,4 @@ build/sid/%/sid-result.txt: build/sid/%/lda_plda_scores
 
 # Also deletes the output files	
 .%.cleanest: .%.clean
-	rm -rf build/output/$*.{trs,txt,ctm,with-compounds.ctm,sbv}
+	rm -rf build/output/$*.{trs,txt,ctm,with-compounds.ctm,srt,json}

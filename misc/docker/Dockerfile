@@ -66,7 +66,7 @@ ENV LANG en_US.UTF-8
     
 RUN apt-get install -y openjdk-8-jre-headless
 
-RUN echo 3 > /dev/null && \
+RUN echo 4 > /dev/null && \
     git clone https://github.com/alumae/kaldi-offline-transcriber.git
 COPY Makefile.options /opt/kaldi-offline-transcriber/Makefile.options
 
@@ -84,7 +84,7 @@ RUN apt-get install -y python3-numpy && \
     make .init
 
 RUN ln -s -f /usr/bin/python2 /usr/bin/python && \
-    apt-get install -y python-numpy python-scipy && \
+    apt-get install -y python-numpy python-scipy python3-simplejson && \
     pip2 install theano --no-deps
 
 # Set up punctuator    
