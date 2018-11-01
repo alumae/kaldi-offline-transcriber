@@ -46,3 +46,12 @@ The result (in Transcriber XML format) is now in ~/tmp/speechfiles/intervjuu2018
 	</Section>
 	</Episode>
 	</Trans>
+
+## Updating
+
+If you want to replace the running container with a freshly pulled image, execute the following steps:
+
+	docker pull alumae/kaldi-offline-transcriber-et:latest
+	docker container stop speech2text
+	docker run --name speech2text -v ~/tmp/speechfiles:/opt/speechfiles --rm -d -t alumae/kaldi-offline-transcriber-et
+	
