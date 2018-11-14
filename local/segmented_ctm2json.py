@@ -88,8 +88,12 @@ for l in open(args.segmented_ctm):
 
 for section in sections:
   if "turns" in section:
-    for turn in section["turns"]:
+    for (i, turn) in enumerate(section["turns"]):
       turn["transcript"] = " ".join([w["word"] for w in turn["words"]])
+      # extend turn end time to the next turn, to avoid gaps between turns
+      if i < len(section["turns"]) - 1:
+        turn["end"] = section["turns"][i+1]["start"]
+      
 
 if not args.pms_seg:
   if "turns" in sections[0]:
