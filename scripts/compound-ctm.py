@@ -40,11 +40,12 @@ def process_sentence(proc, sent):
             new_word = words[i_new]
             new_start = sent[i_orig][0]
             new_dur = sent[i_orig][1]
-            new_id = sent[i_orig][3]
+            new_confidence = sent[i_orig][3]
+            new_id = sent[i_orig][4]
             while (i_new + 1 < len(words)) and (words[i_new + 1] in ["+C+", "+D+"] or words[i_new + 1].startswith("_")):
                 #append next word
                 if (words[i_new + 1] == "+C+"):
-                    new_word = new_word + "+" + words[i_new + 2]
+                    new_word = new_word + "+" + words[i_new + 2]                    
                     i_new +=  2
                     i_orig += 1
                 elif (words[i_new + 1] == "+D+"):
@@ -57,13 +58,15 @@ def process_sentence(proc, sent):
                     i_orig += 1
                     
                 new_dur = sent[i_orig][0] + sent[i_orig][1] - new_start 
+                new_confidence = min(new_confidence, sent[i_orig][3])
+                
             i_new += 1
             i_orig += 1
             new_word = new_word.replace("_", "")
-            result.append((new_start,new_dur,new_word, new_id))
+            result.append((new_start, new_dur, new_word, new_confidence, new_id))
         
         for r in result:
-            print("%s 1 %0.3f %0.3f %s" % (r[3].replace("-", "_"), r[0], r[1], r[2]))
+            print("%s 1 %0.3f %0.3f %s %0.2f" % (r[4].replace("-", "_"), r[0], r[1], r[2], r[3]))
         
 
 if __name__ == '__main__':
@@ -84,6 +87,10 @@ if __name__ == '__main__':
         start = float(ss[2])
         duration = float(ss[3])
         word = ss[4]
+        if len(ss) > 5:
+            confidence = float(ss[5])
+        else:
+            confidence = 1.0
         if id != last_id:
             process_sentence(proc, sent)
             sent = []
@@ -91,7 +98,7 @@ if __name__ == '__main__':
             word = "</s>"
         if (word == "<filler>"):
             continue            
-        sent.append((start, duration, word, id))
+        sent.append((start, duration, word, confidence, id))
         if (word == "</s>"):
             process_sentence(proc, sent)
             sent = []
