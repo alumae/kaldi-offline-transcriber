@@ -1,4 +1,4 @@
-# /usr/bin/env python3
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
@@ -13,7 +13,7 @@ import pdb
 from pynini import *
 import pytest
 
-input_chars = list(u" 0123456789-+/_.:'~,")
+input_chars = list(u" 0123456789-+/_.:'~,?!.")
 input_chars.extend(list(u"abcdefghijklmnoprsštuvwõõäöüxyzž"))
 input_chars.extend(u"ćçčĉø")
 input_chars.extend([c.upper() for c in input_chars])
@@ -135,7 +135,7 @@ def words2num_fst():
   
   t_10_to_99 = t_10_to_19 | t_20_to_99
   
-  t_100_to_999 = (t("üks", "1",  input_token_type="utf8") | t("", "1") | t_2_to_9 ) + t("sada", "") + \
+  t_100_to_999 = (t("üks", "1",  input_token_type="utf8") | t("", "1", weight=1) | t_2_to_9 ) + t("sada", "") + \
     ( 
       t("", "00") | 
       (t(" ", "0", weight=-1) + (t_1_to_9)) | 
@@ -143,7 +143,9 @@ def words2num_fst():
     )
   
   
-  t_1000_to_9999 = (t("üks ", "1",  input_token_type="utf8") | t("", "1") | (t_2_to_9 + t(" ", ""))) + t("tuhat", "") + \
+  t_2_to_999 = t_2_to_9 | t_10_to_99 | t_100_to_999 
+    
+  t_1000_to_9999 = (t("üks ", "1",  input_token_type="utf8") | t("", "1", weight=1) | (t_2_to_999 + t(" ", ""))) + t("tuhat", "") + \
     (
       (t(" ", "", ) + t_100_to_999) | 
       (t(" ", "0") + t_10_to_99) |
@@ -172,7 +174,7 @@ def words2num_fst():
   t_fraction_gen = t_gen_to_nom * t_fraction
 
   # Other inflections
-  t_10_to_9999_infl = t_10_to_9999_gen + (t("", "-") + union(u"le", u"l", u"ni", u"ga", u"lt", u"st", u"na", u"sse"))
+  t_10_to_9999_infl = t_10_to_9999_gen + (t("", "-") + union(u"le", u"l", u"ni", u"ga", u"lt", u"st", u"na", u"sse", u"ks"))
   
   # Ordinal nominative
   t_ord_to_gen = string_map(gen_to_ord_specials, input_token_type="utf8", output_token_type="utf8").invert() | t("s", "")
@@ -183,7 +185,7 @@ def words2num_fst():
   t_10_to_9999_ord_gen = (sigma_star + t_ord_gen_to_gen) * t_10_to_9999_gen + t("", ".")
   
   # Ordinal other inflections
-  t_10_to_9999_ord_infl = t_10_to_9999_ord_gen + (t("l", "") |  (t("", "-") + union(u"le", u"ni", u"ga", u"lt", u"st", u"na", u"sse", u"te", u"tele", u"teni", u"tega", u"telt", u"test", u"tesse")))
+  t_10_to_9999_ord_infl = t_10_to_9999_ord_gen + (t("l", "") |  (t("", "-") + union(u"le", u"ni", u"ga", u"lt", u"st", u"na", u"sse", u"ks", u"te", u"tele", u"teni", u"tega", u"telt", u"test", u"tesse", u"teks")))
    
   transforms = [
     cdrewrite(t_fraction, left_break, right_break, sigma_star),
@@ -210,17 +212,10 @@ def words2num(fst, text):
   try:
     return result.stringify(token_type="utf8")
   except:
-    print("Failed to convert sentence", file=sys.stderr)
+    print("Failed to convert sentence: %s" % text, file=sys.stderr)
     return text
 
-if __name__ == '__main__':
-  words2num_fst = words2num_fst()
-  while 1:    
-    l = sys.stdin.readline()
-    if not l: break
-    print(words2num(words2num_fst, l.strip()))
-
-      
+     
 def test_simple(words2num_fst):    
   assert words2num(words2num_fst, "see on üheksateist protsenti suurem") == "see on 19 protsenti suurem"
   assert words2num(words2num_fst, "see on kakskümmend protsenti suurem") == "see on 20 protsenti suurem"
@@ -233,6 +228,9 @@ def test_simple(words2num_fst):
   assert words2num(words2num_fst, "kolm koma neliteist protsenti") == "3,14 protsenti"
   assert words2num(words2num_fst, "kolm koma null üks protsenti") == "3,01 protsenti"
   assert words2num(words2num_fst, "viiskümmend koma null null kaheksa kaks protsenti") == "50,0082 protsenti"
+  assert words2num(words2num_fst, "kaks tuhat kuusteist") == "2016"
+  assert words2num(words2num_fst, "kahe tuhande kolmekümne viiendaks aastaks") == "2035.-ks aastaks"
+  assert words2num(words2num_fst, "kakssada tuhat eurot") == "200000 eurot"
     
 
 def test_inflections(words2num_fst):
@@ -262,3 +260,12 @@ def  test_complex_inflections(words2num_fst):
 
 def  test_invalid_chars(words2num_fst):
   assert words2num(words2num_fst, "€¨€½|") == "€¨€½|"
+
+
+if __name__ == '__main__':
+  words2num_fst = words2num_fst()
+  while 1:    
+    l = sys.stdin.readline()
+    if not l: break
+    sys.stdout.write(words2num(words2num_fst, l.strip()) + "\n")
+    sys.stdout.flush()
