@@ -37,8 +37,9 @@ def print_sections(sections, speakers):
       print('<Section type="%s" startTime="%0.3f" endTime="%0.3f">' % ("report", section["start"], section["end"]))
       for turn in section.get("turns", []):
       
-        print('<Turn speaker="%s" startTime="%0.3f" endTime="%0.3f">' % (speakers[turn["speaker"]]["transcriber_id"], turn["start"], turn["end"]))
-        print(turn["transcript"])
+        print('<Turn speaker="%s" startTime="%0.3f" endTime="%0.3f">' % (speakers[turn["speaker"]]["transcriber_id"], turn["start"], turn["end"]))        
+        # TRS files should use unnormalized transcripts where words are not converted to numbers
+        print(turn.get("unnormalized_transcript", turn["transcript"]))
         print('</Turn>')
       print('</Section>')
     elif section_type == "non-speech":

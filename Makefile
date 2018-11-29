@@ -377,10 +377,14 @@ endif
 %.punctuated.json: %.json
 	cat $^ | $(PUNCTUATE_JSON_CMD) > $@
 
+%.normalized.json: %.json
+	./local/normalize_json.py ./local/words2numbers.py $^ > $@
+
+
 %.hyp: %.segmented.ctm
 	cat $^ | ./scripts/segmented-ctm-to-hyp.py > $@
 
-build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).json
+build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).trs: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).normalized.json
 	./local/json2trs.py --fid $* $^ > $@
 
 %.srt: %.json
@@ -389,7 +393,7 @@ build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).trs: build/trans/%/$(FINAL_PASS)$(D
 %.txt: %.trs
 	cat $^  | grep -v "^<" > $@
 
-build/output/%.json: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).json	
+build/output/%.json: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).normalized.json	
 	mkdir -p `dirname $@`
 	cp $^ $@
 
