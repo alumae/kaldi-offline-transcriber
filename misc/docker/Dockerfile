@@ -71,7 +71,7 @@ RUN echo 6 > /dev/null && \
 COPY Makefile.options /opt/kaldi-offline-transcriber/Makefile.options
 
 RUN cd /opt/kaldi-offline-transcriber && \
-    wget -q -O - http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-riigikogu-data-2018-12-04.tar | tar xv
+    wget -q -O - http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-09-12.tgz | tar xvz
 
 RUN cd /opt/kaldi/tools && \
     extras/install_pocolm.sh
@@ -84,12 +84,11 @@ RUN apt-get install -y python3-numpy && \
     make .init
 
 RUN ln -s -f /usr/bin/python2 /usr/bin/python && \
-    apt-get install -y python-numpy python-scipy python3-simplejson python3-pytest && \
+    apt-get install -y python-numpy python-scipy python3-simplejson && \
     pip2 install theano --no-deps
 
 # Set up punctuator    
-RUN echo 3 > /dev/null && \
-    cd /opt/kaldi-offline-transcriber && \
+RUN cd /opt/kaldi-offline-transcriber && \
     wget -q -O - http://bark.phon.ioc.ee/tanel/est_punct2.tar.gz | tar xvz && \
 	  echo 'DO_PUNCTUATION=yes' >> /opt/kaldi-offline-transcriber/Makefile.options && \
     echo 'PUNCTUATE_JSON_CMD=(cd punctuator-data/est_punct2/; temp_file1=$$(mktemp); temp_file2=$$(mktemp); cat > $$temp_file1;  python2 punctuator_pad_emb_json.py Model_stage2p_final_563750_h256_lr0.02.pcl $$temp_file1 $$temp_file2 > /dev/stderr; cat $$temp_file2; rm $$temp_file1 $$temp_file2)' >> /opt/kaldi-offline-transcriber/Makefile.options 
@@ -100,5 +99,4 @@ RUN echo 2 > /dev/null && \
     git pull    
    
 CMD ["/bin/bash"]    
-
 
