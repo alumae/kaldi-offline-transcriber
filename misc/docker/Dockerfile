@@ -88,7 +88,7 @@ RUN ln -s -f /usr/bin/python2 /usr/bin/python && \
     pip2 install theano --no-deps
 
 # Set up punctuator    
-RUN echo 2 > /dev/null && \
+RUN echo 3 > /dev/null && \
     cd /opt/kaldi-offline-transcriber && \
     wget -q -O - http://bark.phon.ioc.ee/tanel/est_punct2.tar.gz | tar xvz && \
 	  echo 'DO_PUNCTUATION=yes' >> /opt/kaldi-offline-transcriber/Makefile.options && \

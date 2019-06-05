@@ -10,6 +10,9 @@ DO_MUSIC_DETECTION?=yes
 DO_SPEAKER_ID?=no
 SID_SIMILARITY_THRESHOLD?=13
 
+
+SPEAKER_ID_SERVER_URL?=
+
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk
 
@@ -345,11 +348,11 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
 ifeq "yes" "$(DO_MUSIC_DETECTION)"
-build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.txt  build/diarization/%/show.seg
-	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.txt --pms-seg build/diarization/$*/show.pms.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.json  build/diarization/%/show.seg
+	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.json --pms-seg build/diarization/$*/show.pms.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
 else
-build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.txt
-	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.txt build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.json
+	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.json build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
 endif
 else
 ifeq "yes" "$(DO_MUSIC_DETECTION)"
@@ -421,6 +424,8 @@ build/output/%.srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).srt
 
 ### Speaker ID stuff
 
+ifeq ($(SPEAKER_ID_SERVER_URL), '')
+
 # MFCC for Speaker ID, since the features for MFCC are different from speech recognition
 build/sid/%/wav.scp: build/trans/%/wav.scp
 	mkdir -p `dirname $@`
@@ -472,9 +477,21 @@ build/sid/%/lda_plda_scores: build/sid/%/trials
 	  "ark:ivector-subtract-global-mean kaldi-data/sid/mean.vec scp:build/sid/$*/ivectors/spk_ivector.scp ark:- | transform-vec kaldi-data/sid/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
 	  build/sid/$*/trials $@
 
-build/sid/%/sid-result.txt: build/sid/%/lda_plda_scores
+build/sid/%/sid-result.json: build/sid/%/lda_plda_scores
 	cat build/sid/$*/lda_plda_scores | sort -k2,2 -k3,3nr | awk '{print $$3, $$1, $$2}' | uniq -f2 | awk '{if ($$1 > $(SID_SIMILARITY_THRESHOLD)) {print $$3, $$2}}' | \
-	perl -npe 's/^\S+-(S\d+)/\1/; s/_/ /g;' > $@
+	perl -npe 's/^\S+-(S\d+)/\1/; s/_/ /g;' | python -c 'import json, sys; spks={s.split()[0]:{"name" : " ".join(s.split()[1:])} for s in sys.stdin}; json.dump(spks, sys.stdout);' > $@
+
+else
+
+build/sid/%/wav_segments: build/trans/%/spk2utt build/trans/%/wav.scp 
+	utils/data/extract_wav_segments_data_dir.sh --cmd "$$decode_cmd" --nj $(njobs) build/trans/$* $@
+	perl -i -npe 's/^\S+-(S\d+)/\1/;'  build/sid/$*/wav_segments/spk2utt
+
+build/sid/%/sid-result.json: build/sid/%/wav_segments
+	./local/speaker-id-from-server.py --url $(SPEAKER_ID_SERVER_URL) build/sid/$*/wav_segments/spk2utt build/sid/$*/wav_segments/wav.scp $@
+	
+
+endif
 
 
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean

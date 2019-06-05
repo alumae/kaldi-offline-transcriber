@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser("Converts (segmented) CTM to dedicated JSON for
 parser.add_argument('--new-turn-sil-length', default="2.0", type=Decimal, help="Length of silence in seconds, from which a new turn is created")
 parser.add_argument('--speech-padding', default="0.25", type=Decimal, help="Speech segments are padded by this amount")
 parser.add_argument('--pms-seg', help="The pms (speech/non-speech segmentation) file from diarization")
-parser.add_argument('--speaker-names', help="File that maps peaker IDs to names")
+parser.add_argument('--speaker-names', help="File in JSON format that maps speaker IDs to speaker info (usually just name name)")
 parser.add_argument('segmented_ctm')
 
 args = parser.parse_args()
@@ -100,11 +100,7 @@ if not args.pms_seg:
     sections[0]["end"] = sections[0]["turns"][-1]["end"]
 
 if args.speaker_names:
-  for l in open(args.speaker_names):
-    speaker_id, _, name = l.partition(" ")
-    name = name.strip()
-    if speaker_id in speakers:
-      speakers[speaker_id]["name"] = name
+  speakers = json.load(open(args.speaker_names))
 
 result['speakers'] = speakers
 result['sections'] = sections
