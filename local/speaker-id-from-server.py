@@ -72,7 +72,7 @@ if __name__ == "__main__":
       print("Doing speaker ID for speaker %s using URL %s" % (speaker, full_url), file=sys.stderr)
       r = requests.post(full_url, data=body, headers={"Content-Type": content_type})
       if r.status_code == 200:
-        speaker_info = json.loads(r.content)
+        speaker_info = json.loads(r.content.decode("utf-8"))
         output[speaker] = speaker_info
         print("Speaker ID successful, speaker info: " + str(speaker_info), file=sys.stderr)
       else:

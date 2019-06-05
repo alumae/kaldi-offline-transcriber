@@ -488,7 +488,7 @@ build/sid/%/wav_segments: build/trans/%/spk2utt build/trans/%/wav.scp
 	perl -i -npe 's/^\S+-(S\d+)/\1/;'  build/sid/$*/wav_segments/spk2utt
 
 build/sid/%/sid-result.json: build/sid/%/wav_segments
-	./local/speaker-id-from-server.py --url $(SPEAKER_ID_SERVER_URL) build/sid/$*/wav_segments/spk2utt build/sid/$*/wav_segments/wav.scp $@
+	PATH=$(KALDI_ROOT)/src/featbin:$$PATH; ./local/speaker-id-from-server.py --url $(SPEAKER_ID_SERVER_URL) build/sid/$*/wav_segments/spk2utt build/sid/$*/wav_segments/wav.scp $@
 	
 
 endif
