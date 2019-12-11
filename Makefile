@@ -178,11 +178,11 @@ build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 
 build/audio/base/%.wav: src-audio/%.wav
 	mkdir -p `dirname $@`
-	sox $^ -c 1 -2 build/audio/base/$*.wav rate -v 16k
+	sox $^ -c 1 -b 16 build/audio/base/$*.wav rate -v 16k
 
 build/audio/base/%.wav: src-audio/%.mp3
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k	
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 $@ rate -v 16k	
 
 build/audio/base/%.wav: src-audio/%.ogg
 	mkdir -p `dirname $@`
@@ -194,11 +194,11 @@ build/audio/base/%.wav: src-audio/%.mp2
 
 build/audio/base/%.wav: src-audio/%.m4a
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 $@ rate -v 16k
 	
 build/audio/base/%.wav: src-audio/%.mp4
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 $@ rate -v 16k
 
 build/audio/base/%.wav: src-audio/%.flac
 	mkdir -p `dirname $@`
@@ -207,12 +207,12 @@ build/audio/base/%.wav: src-audio/%.flac
 build/audio/base/%.wav: src-audio/%.amr
 	mkdir -p `dirname $@`
 	amrnb-decoder $^ $@.tmp.raw
-	sox -s -2 -c 1 -r 8000 $@.tmp.raw -c 1 build/audio/base/$*.wav rate -v 16k
+	sox -s -b 16 -c 1 -r 8000 $@.tmp.raw -c 1 build/audio/base/$*.wav rate -v 16k
 	rm $@.tmp.raw
 
 build/audio/base/%.wav: src-audio/%.mpg
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 build/audio/base/$*.wav rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 build/audio/base/$*.wav rate -v 16k
 	
 # Speaker diarization
 build/diarization/%/show.seg: build/audio/base/%.wav
