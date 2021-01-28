@@ -237,7 +237,7 @@ Just clone the git reposititory, e.g. under `/home/speech/tools`:
 Download and unpack the Estonian acoustic and language models:
 
     cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-21.tgz  | tar xvz 
+    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-09-12.tgz  | tar xvz 
 
 Create a file `Makefile.options` and set the `KALDI_ROOT` and `ET_G2P_FST` path to where they are installed:
 
