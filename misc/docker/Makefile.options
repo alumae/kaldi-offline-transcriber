@@ -2,14 +2,6 @@ KALDI_ROOT?=/opt/kaldi
 ET_G2P_FST=/opt/et-g2p-fst
 DO_SPEAKER_ID?=yes
 
-DO_SPEAKER_ID?=yes
 
-ACOUSTIC_MODEL=riigikogu_tdnn_1a_online
-
-LM=language_model/pruned.riigikogu2018-dev.splitw2.arpa.gz
-PRUNED_LM=language_model/pruned6.riigikogu2018-dev.splitw2.arpa.gz
-RNNLM_MODEL=kaldi-data/rnnlms/riigikogu2018-dev/lstm
-COMPOUNDER_LM=language_model/compounder-pruned.riigikogu2018-dev.splitw.arpa.gz
-VOCAB=language_model/riigikogu2018-dev.splitw2.with_long.dict
 
 nthreads=4

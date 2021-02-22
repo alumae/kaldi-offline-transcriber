@@ -11,7 +11,7 @@ DO_SPEAKER_ID?=no
 SID_SIMILARITY_THRESHOLD?=13
 
 
-SPEAKER_ID_SERVER_URL?=
+SPEAKER_ID_SERVER_URL?=''
 
 # Where is Kaldi root directory?
 KALDI_ROOT?=/home/speech/tools/kaldi-trunk

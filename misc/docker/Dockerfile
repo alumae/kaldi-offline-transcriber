@@ -1,4 +1,4 @@
-FROM debian:9
+FROM kaldiasr/kaldi:latest 
 MAINTAINER Tanel Alumae <alumae@gmail.com>
 
 RUN apt-get update && apt-get install -y  \
@@ -27,13 +27,7 @@ RUN apt-get update && apt-get install -y  \
 
 WORKDIR /opt
 
-RUN git clone https://github.com/kaldi-asr/kaldi && \
-    cd /opt/kaldi/tools && \
-    make -j8 && \
-    cd /opt/kaldi/src && ./configure --shared && \
-    sed -i '/-g # -O0 -DKALDI_PARANOID/c\-O3 -DNDEBUG' kaldi.mk && \
-    make -j8 depend && make -j8
-    
+   
 RUN apt-get install -y python3-setuptools && \
     cd /tmp && \
     git clone https://github.com/google/re2 && \
