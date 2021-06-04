@@ -100,7 +100,8 @@ if not args.pms_seg:
     sections[0]["end"] = sections[0]["turns"][-1]["end"]
 
 if args.speaker_names:
-  speakers = json.load(open(args.speaker_names))
+  speakers.update(json.load(open(args.speaker_names)))
+  
 
 result['speakers'] = speakers
 result['sections'] = sections
