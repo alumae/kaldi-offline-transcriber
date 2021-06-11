@@ -448,7 +448,7 @@ build/output/%.ctm: build/trans/%/$(FINAL_PASS).ctm
 	mkdir -p `dirname $@`
 	cp $^ $@
 
-build/output/%.txt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).txt
+build/output/%.txt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).normalized.txt
 	mkdir -p `dirname $@`
 	cp $^ $@
 
@@ -457,7 +457,7 @@ build/output/%.with-compounds.ctm: build/trans/%/$(FINAL_PASS).with-compounds.ct
 	cp $^ $@
 
 
-build/output/%.srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).srt
+build/output/%.srt: build/trans/%/$(FINAL_PASS)$(DOT_PUNCTUATED).normalized.srt
 	mkdir -p `dirname $@`
 	cp $^ $@
 
