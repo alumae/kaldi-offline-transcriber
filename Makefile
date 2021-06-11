@@ -4,10 +4,11 @@ SHELL := /bin/bash
 -include Makefile.options
 
 DO_MUSIC_DETECTION?=yes
+DO_LANGUAGE_DETECTION?=yes
 
 # Set to 'yes' if you want to do speaker ID for trs files
 # Assumes you have models for speaker ID
-DO_SPEAKER_ID?=no
+DO_SPEAKER_ID?=yes
 SID_SIMILARITY_THRESHOLD?=13
 
 
@@ -36,19 +37,20 @@ export cuda_cmd=run.pl
 export mkgraph_cmd=run.pl
 
 # Main language model (should be slightly pruned), used for rescoring
-LM ?=language_model/pruned.vestlused-dev.splitw2.arpa.gz
+#LM ?=language_model/interpolated.pruned9.4g.arpa.gz
 
 # More aggressively pruned LM, used in decoding
-PRUNED_LM ?=language_model/pruned6.vestlused-dev.splitw2.arpa.gz
+PRUNED_LM ?=language_model/interpolated.pruned9.4g.arpa.gz
 
-RNNLM_MODEL ?=language_model/rnnlm.vestlused-dev
+RNNLM_MODEL ?=language_model/rnnlm
 
-COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
+#COMPOUNDER_LM ?=language_model/compounder-pruned.vestlused-dev.splitw.arpa.gz
+COMPOUNDER_LM ?=language_model/compounder.pruned9.4g.arpa.gz
 
-ACOUSTIC_MODEL?=tdnn_7d_online
+ACOUSTIC_MODEL?=cnn_tdnn_1d_online
 
 # Vocabulary in dict format (no pronouncation probs for now)
-VOCAB?=language_model/vestlused-dev.splitw2.with_long.dict
+VOCAB?=language_model/lexicon.txt
 
 ET_G2P_FST?=../et-g2p-fst
 
@@ -66,7 +68,7 @@ endif
 where-am-i = $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(shell dirname $(call where-am-i))
 
-FINAL_PASS=$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk
+FINAL_PASS=$(ACOUSTIC_MODEL)_pruned_rnnlm_unk
 
 LD_LIBRARY_PATH:=$(KALDI_ROOT)/tools/openfst/lib:$(LD_LIBRARY_PATH)
 
@@ -88,7 +90,10 @@ export
 	ln -s $(KALDI_ROOT)/scripts/rnnlm
 	mkdir -p src-audio
 
-.lang: build/fst/data/prunedlm_unk build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/fst/data/largelm_unk build/fst/data/rnnlm_unk build/fst/data/compounderlm
+#.lang: build/fst/data/prunedlm_unk build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/fst/data/largelm_unk build/fst/data/rnnlm_unk build/fst/data/compounderlm
+.lang: build/fst/data/prunedlm_unk build/fst/$(ACOUSTIC_MODEL)/graph_prunedlm_unk build/fst/data/rnnlm_unk build/fst/data/compounderlm
+
+
 
 build/fst/$(ACOUSTIC_MODEL)/final.mdl:
 	rm -rf `dirname $@`
@@ -178,11 +183,11 @@ build/fst/%/graph_prunedlm: build/fst/data/prunedlm build/fst/%/final.mdl
 
 build/audio/base/%.wav: src-audio/%.wav
 	mkdir -p `dirname $@`
-	sox $^ -c 1 -2 build/audio/base/$*.wav rate -v 16k
+	sox $^ -c 1 -b 16 build/audio/base/$*.wav rate -v 16k
 
 build/audio/base/%.wav: src-audio/%.mp3
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k	
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 $@ rate -v 16k	
 
 build/audio/base/%.wav: src-audio/%.ogg
 	mkdir -p `dirname $@`
@@ -194,11 +199,11 @@ build/audio/base/%.wav: src-audio/%.mp2
 
 build/audio/base/%.wav: src-audio/%.m4a
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 $@ rate -v 16k
 	
 build/audio/base/%.wav: src-audio/%.mp4
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 $@ rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 $@ rate -v 16k
 
 build/audio/base/%.wav: src-audio/%.flac
 	mkdir -p `dirname $@`
@@ -207,12 +212,12 @@ build/audio/base/%.wav: src-audio/%.flac
 build/audio/base/%.wav: src-audio/%.amr
 	mkdir -p `dirname $@`
 	amrnb-decoder $^ $@.tmp.raw
-	sox -s -2 -c 1 -r 8000 $@.tmp.raw -c 1 build/audio/base/$*.wav rate -v 16k
+	sox -s -b 16 -c 1 -r 8000 $@.tmp.raw -c 1 build/audio/base/$*.wav rate -v 16k
 	rm $@.tmp.raw
 
 build/audio/base/%.wav: src-audio/%.mpg
 	mkdir -p `dirname $@`
-	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -2 build/audio/base/$*.wav rate -v 16k
+	ffmpeg -i $^ -f sox - | sox -t sox - -c 1 -b 16 build/audio/base/$*.wav rate -v 16k
 	
 # Speaker diarization
 build/diarization/%/show.seg: build/audio/base/%.wav
@@ -222,18 +227,18 @@ build/diarization/%/show.seg: build/audio/base/%.wav
 	if [ $(DO_MUSIC_DETECTION) = yes ]; then diarization_opts="-m"; fi; \
 	./scripts/diarization.sh $$diarization_opts $^ `dirname $@`/show.uem.seg
 
-build/trans/%/wav.scp:
-	mkdir -p build/trans/$*
+build/trans/%/test.pre_lid/wav.scp:
+	mkdir -p build/trans/$*/test.pre_lid
 	echo "$* build/audio/base/$*.wav" > $@
 
-build/trans/%/reco2file_and_channel:
+build/trans/%/test.pre_lid/reco2file_and_channel:
 	echo "$* $* A" > $@
 
 # if diarization doesn't find andy speech segments,
 # we generate a 'dummy' short speech segment,
 # so that decoding won't fail
 # this is unfortunately pretty ugly
-build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build/trans/%/reco2file_and_channel
+build/trans/%/test.pre_lid/segments: build/diarization/%/show.seg build/trans/%/test.pre_lid/wav.scp build/trans/%/test.pre_lid/reco2file_and_channel
 	cat build/diarization/$*/show.seg | cut -f 3,4,8 -d " " | \
 	while read LINE ; do \
 		start=`echo $$LINE | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; printf("%08.3f", $$start);'`; \
@@ -245,17 +250,38 @@ build/trans/%/segments: build/diarization/%/show.seg build/trans/%/wav.scp build
 	  echo "$*-dummy---0.000-0.110 $* 0.0 0.110" > $@; \
 	fi
 	
+ifeq "yes" "$(DO_LANGUAGE_DETECTION)"	
+	
+build/trans/%/segments: build/trans/%/test.pre_lid/segments build/trans/%/test.pre_lid/utt2lang	
+	cp build/trans/$*/test.pre_lid/{wav.scp,reco2file_and_channel} build/trans/$*
+	# Remove segments whose language is not "et"
+	grep "et$$" build/trans/$*/test.pre_lid/utt2lang | sort | \
+		join <(sort build/trans/$*/test.pre_lid/segments) - | \
+		awk '{print($$1, $$2, $$3, $$4)}' | LC_ALL=C sort > $@
+
+else
+
+build/trans/%/segments: build/trans/%/test.pre_lid/segments build/trans/%/test.pre_lid/utt2lang	
+	cp build/trans/$*/test.pre_lid/{wav.scp,reco2file_and_channel,segments} build/trans/$*
+	
+endif	
+
+build/trans/%/wav.scp: build/trans/%/test.pre_lid/wav.scp
+	cp $^ $@
+
 build/trans/%/utt2spk: build/trans/%/segments
-	cat $^ | perl -npe 's/\s+.*//; s/((.*)---.*)/\1 \2/' > $@
+	cat build/trans/$*/segments | \
+		perl -npe 's/\s+.*//; s/((.*)---.*)/\1 \2/' > $@
+	
 
 build/trans/%/spk2utt: build/trans/%/utt2spk
 	utils/utt2spk_to_spk2utt.pl $^ > $@
 
 
 # MFCC calculation
-build/trans/%/mfcc: build/trans/%/spk2utt build/fst/$(ACOUSTIC_MODEL)/final.mdl
+build/trans/%/mfcc: build/trans/%/spk2utt build/trans/%/segments build/fst/$(ACOUSTIC_MODEL)/final.mdl
 	rm -rf $@
-	rm -f build/trans/$*/cmvn.scp
+	rm -f build/trans/$*/cmvn.scp build/trans/$*/mfcc.scp
 	steps/make_mfcc.sh --mfcc-config build/fst/$(ACOUSTIC_MODEL)/conf/mfcc.conf --cmd "$$decode_cmd" --nj $(njobs) \
 		build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
 	steps/compute_cmvn_stats.sh build/trans/$* build/trans/$*/exp/make_mfcc $@ || exit 1
@@ -310,6 +336,20 @@ build/trans/%/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/decode/log: build
 	    build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_unk/decode \
       build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/decode
 	cp -r --preserve=links build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk/graph build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rescored_main_rnnlm_unk/	
+
+build/trans/%/$(ACOUSTIC_MODEL)_pruned_rnnlm_unk/decode/log: build/trans/%/$(ACOUSTIC_MODEL)_pruned_unk/decode/log build/fst/data/rnnlm_unk
+	rm -rf build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rnnlm_unk
+	mkdir -p build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rnnlm_unk
+	(cd build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rnnlm_unk; for f in ../../../fst/$(ACOUSTIC_MODEL)/*; do ln -s $$f; done)
+	rnnlm/lmrescore_pruned.sh \
+	    --skip-scoring true \
+	    --max-ngram-order 4 \
+      build/fst/data/prunedlm_unk \
+      build/fst/data/rnnlm_unk \
+      build/trans/$* \
+	    build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk/decode \
+      build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rnnlm_unk/decode
+	cp -r --preserve=links build/trans/$*/$(ACOUSTIC_MODEL)_pruned_unk/graph build/trans/$*/$(ACOUSTIC_MODEL)_pruned_rnnlm_unk/	
 
 
 %/decode/.ctm: %/decode/log
@@ -492,6 +532,25 @@ build/sid/%/sid-result.json: build/sid/%/wav_segments
 	
 
 endif
+
+
+## Language ID
+
+build/lid/%: build/trans/%/test.pre_lid/segments
+	rm -rf $@
+	mkdir -p $@
+	python local/extract_lid_features_kaldi.py build/trans/$*/test.pre_lid $@
+	cat build/trans/$*/test.pre_lid/segments | awk '{print($$1, "0")}' > build/lid/$*/trials
+	
+build/trans/%/test.pre_lid/utt2lang: build/lid/%
+	threshold=`cat models/lid_et/threshold`; \
+	ivector-subtract-global-mean models/lid_et/xvector.global.vec scp:build/lid/$*/xvector.scp ark:- | \
+	ivector-normalize-length --scaleup=false ark:- ark:- | \
+	logistic-regression-eval --apply-log=true --max-steps=20 --mix-up=0 \
+		models/lid_et/lr.scale.model \
+		ark:build/lid/$*/trials ark:- - | \
+		awk '{print($$1, $$3 > '$$threshold' ? "et" : "other")}' > $@
+		
 
 
 # Meta-target that deletes all files created during processing a file. Call e.g. 'make .etteytlus2013.clean
