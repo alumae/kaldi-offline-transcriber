@@ -2,6 +2,10 @@
 
 ## Updates ##
 
+### 2021-06-15 ###
+  * Integrated spoken language identification model that filters out non-Estonian utterances before decoding
+  * New Docker image with new models; the default workflow now doesn't use LM rescoring (only RNNLM rescoring)
+
 ### 2018-10-31 ###
   * Introduced a new JSON format for holding all information baout the transcription (speakers, words, timings)
   * Subtitles are now split to shorter segments
@@ -98,6 +102,7 @@ with Kaldi.
 
 The system performs:
   * Speech/non-speech detection, speech segmentation, speaker diarization (using the LIUMSpkDiarization package, http://lium3.univ-lemans.fr/diarization)
+  * Language identification
   * Three-pass decoding
     - With Kaldi's so-called chain TDNN acoustic models that use i-vectors for speaker adaptation
     - Rescoring with a larger language model
@@ -132,159 +137,9 @@ cores by half, but should make processing faster, if you won't run more than
 It is recommended (but not needed) to create a decicated user account for the transcription work. 
 In the following we assume the user is `speech`, with a home directory `/home/speech`.
 
-### Development tools ###
-
-  * C/C++ compiler, make, etc (the command `apt-get install build-essential` installs all this on Debian)
-  * Perl
-  * java-jre
-  * Python 2.7 or 3.5+
-
-### Audio processing tools ###
-
-  * ffmpeg
-  * sox
-
 ## Installation ##
 
-### Atlas
-
-Install the ATLAS matrix algebra library. On Ubuntu/Debian (as root):
-
-    apt-get install libatlas3-base
-      
-### Kaldi ###
-
-IMPORTANT: The system works agains Kaldi trunk as of 2018-08-01. The system
-may not work with Kaldi revisions that are a lot (months) older or newer than that.
-
-Install and compile e.g. under `/home/speech/tools`. Follow instructions at
-http://kaldi-asr.org/doc/install.html. Install the `kaldi-trunk` version.
-
-You should probably execute something along the following lines (but refer to the official
-install guide for details):
-
-    cd ~/tools
-    git clone git@github.com:kaldi-asr/kaldi.git kaldi-trunk
-    cd kaldi-trunk
-    cd tools
-    make -j 4
-
-    cd ../src
-    ./configure
-    make depend
-    make -j 4
-
-
-### Python 3 ###
-
-Install python (at least 3.5), using your OS tools (e.g., `apt-get`). 
-Make sure `pip` is installed (`apt-get install python-pip3`). Python 3 should be set as the 
-default python on your system.
-
-
-### Pynini ###
-
-Pynini and OpenFst's Python wrapper are needed for some postprocessing steps. The following
-ugly command line should take care of this (run as root):
-
-    apt-get install -y python3-setuptools && \
-    cd /tmp && \
-    git clone https://github.com/google/re2 && \
-    cd /tmp/re2 && \
-    make -j4 && \
-    make install && \
-    cd /tmp && \
-    wget http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.6.9.tar.gz && \
-    tar zxvf openfst-1.6.9.tar.gz && \
-    cd openfst-1.6.9 && \
-    ./configure --enable-grm && \
-    make -j8 && \
-    make install && \
-    cd /tmp && \
-    wget http://www.opengrm.org/twiki/pub/GRM/PyniniDownload/pynini-2.0.0.tar.gz && \
-    tar zxvf pynini-2.0.0.tar.gz && \
-    cd pynini-2.0.0 && \
-    python setup.py install && \
-    rm -rf /tmp/re2 /tmp/openfst-1.6.9.tar.gz /tmp/pynini-2.0.0.tar.gz /tmp/openfst-1.6.9 /tmp/pynini-2.0.0
-
-You might also need to include /usr/local/lib to LD_LIBRARY_PATH evironment variable. To do this,
-add to `.bashrc`:
-
-    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-
-### Et-G2P
-
-The Estonian FST-based grapheme-to-phoneme converter is needed for post-processing.
-Available at https://github.com/alumae/et-g2p-fst. Just clone it to a directory, e.g. to
-`/home/speech/tools/et-g2p-fst`
-
-    cd /home/speech/tools
-    git clone https://github.com/alumae/et-g2p-fst.git
-    
-Test it (using phoneme-to-grapheme conversion):
-
-    $ echo "muška" | python3 g2p.py --inverse --fst data/chars.fst --nbest 1
-    muška Muška 18.6946869
-   
-    
-### This package ###
-
-Just clone the git reposititory, e.g. under `/home/speech/tools`:
-
-    cd /home/speech/tools
-    git clone https://github.com/alumae/kaldi-offline-transcriber.git
-   
-Download and unpack the Estonian acoustic and language models:
-
-    cd /home/speech/tools/kaldi-offline-transcriber
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-09-12.tgz  | tar xvz 
-
-Create a file `Makefile.options` and set the `KALDI_ROOT` and `ET_G2P_FST` path to where they are installed:
-
-    KALDI_ROOT=/home/speech/tools/kaldi-trunk
-    ET_G2P_FST=/home/speech/tools/et-g2p-fst
-
-
-Run this once:
-
-    make .init
-    
-This compiles all the necessary files from original model files that are used
-during decoding (takes around 30 minutes).
-
-Note that all files that are created during initialization and decoding are
-put under the `build` subdirectory. So, if you feel that you messed something up and
-want to do a fresh start, just delete the `build` directory and do a `make .init` again.
-
-
-## How to upgrade from a previous version ##
-
-Update Kaldi:
-
-    cd /home/speech/tools/kaldi-trunk
-    svn update
-    cd src
-    make clean
-    make -j 4 depend
-    make -j 4 
-
-Update this system:
-
-    cd /home/speech/tools/kaldi-offline-transcriber
-    git pull
-    
-Remove old `build`, `kaldi-data` and `language_model` directories:
-
-    rm -rf build/ kaldi-data/ language_model/
-  
-Get new Estonian models:
-
-    curl http://bark.phon.ioc.ee/tanel/kaldi-offline-transcriber-data-2018-08-21.tgz | tar xvz 
-
-Initialize the new models:
-
-    make .init
-  
+See [Dockerfile](misc/docker/Dockerfile) on how to install all the required components.
 
 ## Usage ##
 
