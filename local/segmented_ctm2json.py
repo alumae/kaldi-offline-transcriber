@@ -44,7 +44,7 @@ if args.pms_seg:
     ss = l.split()
     start = Decimal(int(ss[2]) / Decimal(100.0))
     end = start + Decimal(int(ss[3]) / Decimal(100.0))
-    if ss[7] == 'speech':
+    if ss[7] == 'speech' or ss[7] == '1':
       kind = 'speech'
       if (start > 0.0):
         start -=  args.speech_padding

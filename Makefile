@@ -3,7 +3,6 @@ SHELL := /bin/bash
 # Use this file to override various settings
 -include Makefile.options
 
-DO_MUSIC_DETECTION?=yes
 DO_LANGUAGE_DETECTION?=yes
 
 # Set to 'yes' if you want to do speaker ID for trs files
@@ -222,10 +221,9 @@ build/audio/base/%.wav: src-audio/%.mpg
 # Speaker diarization
 build/diarization/%/show.seg: build/audio/base/%.wav
 	rm -rf `dirname $@`
-	mkdir -p `dirname $@`
-	echo "$* 1 0 1000000000 U U U 1" >  `dirname $@`/show.uem.seg;
-	if [ $(DO_MUSIC_DETECTION) = yes ]; then diarization_opts="-m"; fi; \
-	./scripts/diarization.sh $$diarization_opts $^ `dirname $@`/show.uem.seg
+	mkdir -p `dirname $@`	
+	python3 ./scripts/find_speech_segments.py $^ `dirname $@`/show.uem.seg; \
+	./scripts/diarization.sh $^ `dirname $@`/show.uem.seg
 
 build/trans/%/test.pre_lid/wav.scp:
 	mkdir -p build/trans/$*/test.pre_lid
@@ -387,21 +385,11 @@ build/trans/%.segmented.splitw2.ctm: build/trans/%/decode/.ctm
 	cat $^ | grep -v "++" |  grep -v "\[sil\]" | grep -v -e " $$" | perl -npe 's/\+//g' | sort -k1,1 -k 3,3g > $@
 
 ifeq "yes" "$(DO_SPEAKER_ID)"
-ifeq "yes" "$(DO_MUSIC_DETECTION)"
 build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.json  build/diarization/%/show.seg
-	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.json --pms-seg build/diarization/$*/show.pms.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
+	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.json --pms-seg build/diarization/$*/show.uem.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
 else
-build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/sid/%/sid-result.json
-	python3 local/segmented_ctm2json.py --speaker-names build/sid/$*/sid-result.json build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
-endif
-else
-ifeq "yes" "$(DO_MUSIC_DETECTION)"
 build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm build/diarization/%/show.seg
-	python3 local/segmented_ctm2json.py --pms-seg build/diarization/$*/show.pms.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
-else
-build/trans/%/$(FINAL_PASS).json: build/trans/%/$(FINAL_PASS).segmented.ctm 
-	python3 local/segmented_ctm2json.py build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
-endif
+	python3 local/segmented_ctm2json.py --pms-seg build/diarization/$*/show.uem.seg build/trans/$*/$(FINAL_PASS).segmented.ctm > $@
 endif
 
 
@@ -539,7 +527,7 @@ endif
 build/lid/%: build/trans/%/test.pre_lid/segments
 	rm -rf $@
 	mkdir -p $@
-	python local/extract_lid_features_kaldi.py build/trans/$*/test.pre_lid $@
+	python3 local/extract_lid_features_kaldi.py build/trans/$*/test.pre_lid $@
 	cat build/trans/$*/test.pre_lid/segments | awk '{print($$1, "0")}' > build/lid/$*/trials
 	
 build/trans/%/test.pre_lid/utt2lang: build/lid/%
