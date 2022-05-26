@@ -10,7 +10,7 @@
   * New Docker image with new models; the default workflow now doesn't use LM rescoring (only RNNLM rescoring)
 
 ### 2018-10-31 ###
-  * Introduced a new JSON format for holding all information baout the transcription (speakers, words, timings)
+  * Introduced a new JSON format for holding all information about the transcription (speakers, words, timings)
   * Subtitles are now split to shorter segments
   * TRS files now contain turns without utterance breaks
 
