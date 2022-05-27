@@ -242,7 +242,9 @@ build/trans/%/test.pre_lid/segments: build/diarization/%/show.seg build/trans/%/
 		start=`echo $$LINE | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; printf("%08.3f", $$start);'`; \
 		end=`echo $$LINE   | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; $$len=$$t[1]/100.0; $$end=$$start+$$len; printf("%08.3f", $$end);'`; \
 		sp_id=`echo $$LINE | cut -f 3 -d " "`; \
-		echo $*-$${sp_id}---$${start}-$${end} $* $$start $$end; \
+		if  [ $${end} != $${start} ]; then \
+			echo $*-$${sp_id}---$${start}-$${end} $* $$start $$end; \
+		fi; \
 	done > $@
 	if [ ! -s $@ ]; then \
 	  echo "$*-dummy---0.000-0.110 $* 0.0 0.110" > $@; \
