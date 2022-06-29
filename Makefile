@@ -239,10 +239,11 @@ build/trans/%/test.pre_lid/reco2file_and_channel:
 build/trans/%/test.pre_lid/segments: build/diarization/%/show.seg build/trans/%/test.pre_lid/wav.scp build/trans/%/test.pre_lid/reco2file_and_channel
 	cat build/diarization/$*/show.seg | cut -f 3,4,8 -d " " | \
 	while read LINE ; do \
+	        len_in_frames=`echo $$LINE | cut -f 2 -d " "`; \
 		start=`echo $$LINE | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; printf("%08.3f", $$start);'`; \
 		end=`echo $$LINE   | cut -f 1,2 -d " " | perl -ne '@t=split(); $$start=$$t[0]/100.0; $$len=$$t[1]/100.0; $$end=$$start+$$len; printf("%08.3f", $$end);'`; \
 		sp_id=`echo $$LINE | cut -f 3 -d " "`; \
-		if  [ $${end} != $${start} ]; then \
+		if  [ $${len_in_frames} -gt 30 ]; then \
 			echo $*-$${sp_id}---$${start}-$${end} $* $$start $$end; \
 		fi; \
 	done > $@
