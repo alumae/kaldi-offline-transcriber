@@ -13,6 +13,7 @@ json=""
 with_compounds_ctm=""
 clean=true
 nthreads=1
+do_language_id=
 
 . $BASEDIR/utils/parse_options.sh || exit 1;
 
@@ -20,6 +21,7 @@ if [ $# -ne 1 ]; then
   echo "Usage: speech2text [options] <audiofile>"
   echo "Options:"  
   echo "  --nthreads <n>                   # Use <n> threads in parallel for decoding"
+  echo "  --do-language-id <yes|no>        # Turn language detection on or off"
   echo "  --txt <txt-file>                 # Put the result in a simple text file"
   echo "  --json <json-file>               # Put the result in JSON file"  
   echo "  --trs <trs-file>                 # Put the result in trs file (XML file for Transcriber)"
@@ -38,7 +40,13 @@ basename="${filename%.*}"
 
 nthreads_arg="nthreads=${nthreads}"
 
-(cd $BASEDIR; make $nthreads_arg build/output/$basename.{txt,json,trs,ctm,srt,with-compounds.ctm} || exit 1; if $clean ; then make .$basename.clean; rm src-audio/$filename; fi)
+do_language_lid_arg=""
+if [ ! -z "${do_language_id}" ]; then
+  do_language_lid_arg="DO_LANGUAGE_DETECTION=${do_language_id}"  
+fi
+
+
+(cd $BASEDIR; make $nthreads_arg $do_language_lid_arg build/output/$basename.{txt,json,trs,ctm,srt,with-compounds.ctm} || exit 1; if $clean ; then make .$basename.clean; rm src-audio/$filename; fi)
 
 echo "Finished transcribing, result is in files $BASEDIR/build/output/${basename%.*}.{txt,json,trs,ctm,srt,with-compounds.ctm}"
 

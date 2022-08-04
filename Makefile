@@ -262,7 +262,7 @@ build/trans/%/segments: build/trans/%/test.pre_lid/segments build/trans/%/test.p
 
 else
 
-build/trans/%/segments: build/trans/%/test.pre_lid/segments build/trans/%/test.pre_lid/utt2lang	
+build/trans/%/segments: build/trans/%/test.pre_lid/segments 
 	cp build/trans/$*/test.pre_lid/{wav.scp,reco2file_and_channel,segments} build/trans/$*
 	
 endif	
